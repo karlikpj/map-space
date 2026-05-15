@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import type { DiagramNode, NodeKind } from "../data/model";
 
-const CARD_WIDTH = 2.8;
-const CARD_HEIGHT = 1.45;
-const CARD_DEPTH = 0.24;
+export const CARD_SIZE = {
+  width: 3.15,
+  height: 1.62,
+  depth: 0.24,
+} as const;
 
 type PaletteEntry = {
   base: string;
@@ -96,8 +98,8 @@ function wrapText(
 
 function createLabelTexture(node: DiagramNode, palette: PaletteEntry): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
-  canvas.width = 1024;
-  canvas.height = 512;
+  canvas.width = 1120;
+  canvas.height = 600;
 
   const context = canvas.getContext("2d");
   if (!context) {
@@ -117,17 +119,27 @@ function createLabelTexture(node: DiagramNode, palette: PaletteEntry): THREE.Can
   context.stroke();
 
   context.fillStyle = "#14303c";
-  context.font = "700 64px Avenir Next, Trebuchet MS, sans-serif";
-  const titleLines = wrapText(context, node.title, 820);
+  context.font = "700 68px Avenir Next, Trebuchet MS, sans-serif";
+  const titleLines = wrapText(context, node.title, 860).slice(0, 2);
+  const titleStartY = 190;
+  const titleLineHeight = 74;
 
   titleLines.forEach((line, index) => {
-    context.fillText(line, 90, 200 + index * 72);
+    context.fillText(line, 90, titleStartY + index * titleLineHeight);
   });
 
   if (node.subtitle) {
-    context.fillStyle = "#53707a";
-    context.font = "500 32px Avenir Next, Trebuchet MS, sans-serif";
-    context.fillText(node.subtitle, 90, 420);
+    context.fillStyle = "#355560";
+    context.font = "600 40px Avenir Next, Trebuchet MS, sans-serif";
+    const subtitleLines = wrapText(context, node.subtitle, 860).slice(0, 2);
+    const subtitleStartY = Math.min(
+      470,
+      titleStartY + titleLines.length * titleLineHeight + 86,
+    );
+
+    subtitleLines.forEach((line, index) => {
+      context.fillText(line, 90, subtitleStartY + index * 46);
+    });
   }
 
   const texture = new THREE.CanvasTexture(canvas);
@@ -152,7 +164,7 @@ export function createNodeVisual(node: DiagramNode): NodeVisual {
   });
 
   const frame = new THREE.Mesh(
-    new THREE.BoxGeometry(CARD_WIDTH, CARD_HEIGHT, CARD_DEPTH),
+    new THREE.BoxGeometry(CARD_SIZE.width, CARD_SIZE.height, CARD_SIZE.depth),
     frameMaterial,
   );
 
@@ -177,10 +189,10 @@ export function createNodeVisual(node: DiagramNode): NodeVisual {
   });
 
   const label = new THREE.Mesh(
-    new THREE.PlaneGeometry(CARD_WIDTH * 0.86, CARD_HEIGHT * 0.78),
+    new THREE.PlaneGeometry(CARD_SIZE.width * 0.88, CARD_SIZE.height * 0.82),
     labelMaterial,
   );
-  label.position.z = CARD_DEPTH * 0.5 + 0.02;
+  label.position.z = CARD_SIZE.depth * 0.5 + 0.02;
   label.renderOrder = 2;
 
   const group = new THREE.Group();

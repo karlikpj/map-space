@@ -2,8 +2,13 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { DiagramNode } from "../data/model";
 import { dampNumber, dampVector3 } from "./animation";
-import { FOCUS_POSITION, getAncestorPositions, getChildPositions } from "./layout";
-import { createNodeVisual, type NodeVisual } from "./nodeFactory";
+import {
+  FOCUS_POSITION,
+  getAncestorPositions,
+  getChildPositions,
+  getFocusPosition,
+} from "./layout";
+import { CARD_SIZE, createNodeVisual, type NodeVisual } from "./nodeFactory";
 
 type ViewerOptions = {
   container: HTMLDivElement;
@@ -34,6 +39,7 @@ type RuntimeEdge = {
   line: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>;
   material: THREE.LineBasicMaterial;
   positions: Float32Array;
+  route: "direct" | "elbow";
   targetOpacity: number;
   currentOpacity: number;
 };
@@ -58,7 +64,7 @@ export class SpatialViewer {
   private readonly edges: RuntimeEdge[] = [];
   private readonly pickables: THREE.Object3D[] = [];
   private readonly resizeObserver?: ResizeObserver;
-  private readonly focusPosition = FOCUS_POSITION.clone();
+  private readonly baseFocusPosition = FOCUS_POSITION.clone();
 
   private animationFrame = 0;
   private lastFrameTime = 0;
@@ -93,7 +99,7 @@ export class SpatialViewer {
     this.controls.maxDistance = 18;
     this.controls.minPolarAngle = Math.PI * 0.2;
     this.controls.maxPolarAngle = Math.PI * 0.48;
-    this.controls.target.copy(this.focusPosition);
+    this.controls.target.copy(this.baseFocusPosition);
 
     this.setupScene();
 
@@ -204,7 +210,7 @@ export class SpatialViewer {
       children: [],
       depth,
       visual,
-      targetPosition: parent ? new THREE.Vector3() : this.focusPosition.clone(),
+      targetPosition: parent ? new THREE.Vector3() : this.baseFocusPosition.clone(),
       targetScale: parent ? 0.72 : 1.08,
       targetOpacity: parent ? 0 : 1,
       targetEmphasis: parent ? 0 : 0.9,
@@ -233,7 +239,7 @@ export class SpatialViewer {
   }
 
   private createEdge(parent: RuntimeNode, child: RuntimeNode): RuntimeEdge {
-    const positions = new Float32Array(6);
+    const positions = new Float32Array(12);
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
@@ -252,6 +258,7 @@ export class SpatialViewer {
       line,
       material,
       positions,
+      route: "direct",
       targetOpacity: 0,
       currentOpacity: 0,
     };
@@ -344,8 +351,9 @@ export class SpatialViewer {
     const focusPath = this.getFocusPath();
     const ancestors = focusPath.slice(0, -1);
     const children = this.focusNode.children;
-    const ancestorPositions = getAncestorPositions(ancestors.length);
-    const childPositions = getChildPositions(children.length);
+    const currentFocusPosition = getFocusPosition(this.focusNode.depth);
+    const ancestorPositions = getAncestorPositions(ancestors.length, currentFocusPosition);
+    const childPositions = getChildPositions(children.length, currentFocusPosition);
     const visibleNodes = new Set<RuntimeNode>([...focusPath, ...children]);
 
     for (const node of this.nodes) {
@@ -353,7 +361,7 @@ export class SpatialViewer {
       const childIndex = children.indexOf(node);
 
       if (node === this.focusNode) {
-        node.targetPosition.copy(this.focusPosition);
+        node.targetPosition.copy(currentFocusPosition);
         node.targetScale = 1.08;
         node.targetOpacity = 1;
         node.targetEmphasis = node === this.hoveredNode ? 1.15 : 0.92;
@@ -370,7 +378,7 @@ export class SpatialViewer {
       } else {
         const parentPosition = node.parent
           ? node.parent.visual.group.position
-          : this.focusPosition;
+          : currentFocusPosition;
         node.targetPosition.copy(parentPosition);
         node.targetScale = 0.56;
         node.targetOpacity = 0;
@@ -401,10 +409,13 @@ export class SpatialViewer {
 
       if (isPathEdge) {
         edge.targetOpacity = 0.86;
+        edge.route = "direct";
       } else if (isFocusedChild) {
         edge.targetOpacity = edge.child === this.selectedNode ? 0.72 : 0.44;
+        edge.route = "elbow";
       } else {
         edge.targetOpacity = 0;
+        edge.route = "direct";
       }
 
       if (immediate) {
@@ -482,13 +493,7 @@ export class SpatialViewer {
       edge.currentOpacity = dampNumber(edge.currentOpacity, edge.targetOpacity, 9, delta);
       edge.material.opacity = edge.currentOpacity;
       edge.line.visible = edge.currentOpacity > 0.02 || edge.targetOpacity > 0.02;
-
-      edge.positions[0] = edge.parent.visual.group.position.x;
-      edge.positions[1] = edge.parent.visual.group.position.y;
-      edge.positions[2] = edge.parent.visual.group.position.z;
-      edge.positions[3] = edge.child.visual.group.position.x;
-      edge.positions[4] = edge.child.visual.group.position.y;
-      edge.positions[5] = edge.child.visual.group.position.z;
+      this.updateEdgeGeometry(edge);
       edge.line.geometry.attributes.position.needsUpdate = true;
     }
 
@@ -496,4 +501,52 @@ export class SpatialViewer {
     this.renderer.render(this.scene, this.camera);
     this.animationFrame = window.requestAnimationFrame(this.animate);
   };
+
+  private updateEdgeGeometry(edge: RuntimeEdge): void {
+    if (edge.route === "elbow") {
+      this.setElbowEdgePoints(edge);
+      return;
+    }
+
+    this.setDirectEdgePoints(edge);
+  }
+
+  private setDirectEdgePoints(edge: RuntimeEdge): void {
+    const startOnRight = edge.child.visual.group.position.x >= edge.parent.visual.group.position.x;
+    const start = this.getNodeAnchor(edge.parent, startOnRight ? "right" : "left");
+    const end = this.getNodeAnchor(edge.child, startOnRight ? "left" : "right");
+    const firstMid = start.clone().lerp(end, 0.34);
+    const secondMid = start.clone().lerp(end, 0.68);
+
+    this.setPolyline(edge.positions, [start, firstMid, secondMid, end]);
+  }
+
+  private setElbowEdgePoints(edge: RuntimeEdge): void {
+    const start = this.getNodeAnchor(edge.parent, "right");
+    const end = this.getNodeAnchor(edge.child, "left");
+    const elbowX = THREE.MathUtils.lerp(start.x, end.x, 0.44);
+    const firstBend = new THREE.Vector3(elbowX, start.y, start.z);
+    const secondBend = new THREE.Vector3(elbowX, end.y, end.z);
+
+    this.setPolyline(edge.positions, [start, firstBend, secondBend, end]);
+  }
+
+  private getNodeAnchor(node: RuntimeNode, side: "left" | "right"): THREE.Vector3 {
+    const offset = (CARD_SIZE.width * node.visual.group.scale.x) * 0.5;
+    const direction = side === "right" ? 1 : -1;
+    return new THREE.Vector3(
+      node.visual.group.position.x + offset * direction,
+      node.visual.group.position.y,
+      node.visual.group.position.z,
+    );
+  }
+
+  private setPolyline(pointsBuffer: Float32Array, points: THREE.Vector3[]): void {
+    points.forEach((point, index) => {
+      const offset = index * 3;
+      pointsBuffer[offset] = point.x;
+      pointsBuffer[offset + 1] = point.y;
+      pointsBuffer[offset + 2] = point.z;
+    });
+  }
 }
