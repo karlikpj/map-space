@@ -238,7 +238,60 @@ classDiagram
       low
     }
 
-    class TotalEvidenceScore
+    class TotalEvidenceScore {
+        +root: tuple~AnyFocusAreaEvidenceScore~
+        +deserialize_focus_area_scores(value) tuple~AnyFocusAreaEvidenceScore~ | object
+        +validate_focus_area_score_instances() Self
+        +__iter__() Iterator~AnyFocusAreaEvidenceScore~
+        +__len__() int
+        +__getitem__(index: int) AnyFocusAreaEvidenceScore
+        +has_passing_focus_area() bool
+    }
+
+    class FocusAreaEvidenceScore {
+        +focus_area_name: string
+        +focus_area_id: string
+        +scorer_type: ScorerTypeT
+        +overall_score: float
+        +should_continue_processing: bool
+        +factors: tuple~EvidenceScoreFactor~
+        +score_data: ScoreDataT
+    }
+
+    class EvidenceScoreFactor {
+        +factor_name: string
+        +factor_id: FactorIdT
+        +score: float
+        +reasoning: string?
+        +weight: int
+    }
+
+    class BaseEvidenceScoreData
+
+    class StudyDesignEvidenceScore {
+        +scorer_type: "study_design_evidence_scorer"
+    }
+
+    class StudyDesignScoreData {
+        +level_of_evidence: LevelsOfEvidence
+    }
+
+    class LevelsOfEvidence {
+        <<enumeration>>
+        A1
+        A2
+        A3
+        B1
+        B2
+        B3
+        B4
+        C1
+        C2
+        C3
+        D
+        unknown
+        not_applicable
+    }
 
     class DeterminationType {
         <<enumeration>>
@@ -295,3 +348,12 @@ classDiagram
     SecondaryEndpointsChoice *-- SecondaryEndpointsList
 
     ExtractionConfidence *-- OverallConfidence
+
+    TotalEvidenceScore *-- FocusAreaEvidenceScore : root
+    FocusAreaEvidenceScore *-- EvidenceScoreFactor : factors
+    FocusAreaEvidenceScore *-- BaseEvidenceScoreData : score_data
+
+    StudyDesignEvidenceScore --|> FocusAreaEvidenceScore
+    StudyDesignEvidenceScore *-- StudyDesignScoreData : score_data
+    StudyDesignScoreData --|> BaseEvidenceScoreData
+    StudyDesignScoreData *-- LevelsOfEvidence : level_of_evidence

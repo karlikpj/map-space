@@ -9,7 +9,7 @@ classDiagram
         +has_passing_focus_area() bool
     }
 
-    class FocusAreaEvidenceScore~ScorerTypeT, FactorIdT, ScoreDataT~ {
+    class FocusAreaEvidenceScore {
         +focus_area_name: string
         +focus_area_id: string
         +scorer_type: ScorerTypeT
@@ -19,7 +19,7 @@ classDiagram
         +score_data: ScoreDataT
     }
 
-    class EvidenceScoreFactor~FactorIdT~ {
+    class EvidenceScoreFactor {
         +factor_name: string
         +factor_id: FactorIdT
         +score: float
@@ -54,11 +54,11 @@ classDiagram
         not_applicable
     }
 
-    TotalEvidenceScore *-- FocusAreaEvidenceScore : root[*]
-    FocusAreaEvidenceScore *-- EvidenceScoreFactor : factors[*]
-    FocusAreaEvidenceScore --> BaseEvidenceScoreData : score_data
+    TotalEvidenceScore *-- FocusAreaEvidenceScore : root
+    FocusAreaEvidenceScore *-- EvidenceScoreFactor : factors
+    FocusAreaEvidenceScore *-- BaseEvidenceScoreData : score_data
 
     StudyDesignEvidenceScore --|> FocusAreaEvidenceScore
+    StudyDesignEvidenceScore *-- StudyDesignScoreData : score_data
     StudyDesignScoreData --|> BaseEvidenceScoreData
-    StudyDesignEvidenceScore --> StudyDesignScoreData : score_data
-    StudyDesignScoreData --> LevelsOfEvidence
+    StudyDesignScoreData *-- LevelsOfEvidence : level_of_evidence

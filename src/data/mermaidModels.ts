@@ -28,6 +28,7 @@ export type ModelLoadResult =
 type ParsedMember = {
   name: string;
   raw: string;
+  referencedClassKey?: string;
 };
 
 type ParsedClass = {
@@ -45,6 +46,7 @@ type ParsedRelation = {
   child: string;
   operator: string;
   signature: string;
+  label?: string;
   sourceIndex: number;
 };
 
@@ -251,6 +253,10 @@ function parseClassDiagram(raw: string): ParsedDiagram {
     targetClass.members.push({
       name: extractMemberName(trimmed),
       raw: trimmed,
+      referencedClassKey: extractMemberClassReference(
+        trimmed,
+        getNamespaceSegmentsForClassKey(classKey),
+      ),
     });
   };
 
@@ -341,6 +347,7 @@ function parseClassDiagram(raw: string): ParsedDiagram {
           child: relation.child,
           operator: relation.operator.symbol,
           signature: relation.signature,
+          label: relation.label,
           sourceIndex: structuralRelations.length,
         });
       }
@@ -383,8 +390,13 @@ function buildDiagramTree(source: ModelSource, parsed: ParsedDiagram): DiagramNo
   const primaryParentByChild = new Map<string, ParsedRelation>();
   const primaryChildrenByParent = new Map<string, string[]>();
   const extraReferencesByParent = new Map<string, ParsedRelation[]>();
+  const structuralRelationsByParent = new Map<string, ParsedRelation[]>();
 
   for (const relation of parsed.structuralRelations) {
+    const relationsForParent = structuralRelationsByParent.get(relation.parent) ?? [];
+    relationsForParent.push(relation);
+    structuralRelationsByParent.set(relation.parent, relationsForParent);
+
     if (primaryParentByChild.has(relation.child)) {
       const references = extraReferencesByParent.get(relation.parent) ?? [];
       references.push(relation);
@@ -415,6 +427,7 @@ function buildDiagramTree(source: ModelSource, parsed: ParsedDiagram): DiagramNo
 
     const nodeIdParts = [...ancestorIds, classKey];
     const children: DiagramNode[] = [];
+    const structuralRelations = structuralRelationsByParent.get(classKey) ?? [];
 
     for (const childKey of primaryChildrenByParent.get(classKey) ?? []) {
       const relation = primaryParentByChild.get(childKey);
@@ -457,6 +470,20 @@ function buildDiagramTree(source: ModelSource, parsed: ParsedDiagram): DiagramNo
     }
 
     for (const member of parsedClass.members) {
+      const isRepresentedByStructuralChild = structuralRelations.some((relation) => {
+        if (relation.label && member.name === relation.label) {
+          return true;
+        }
+
+        return (
+          member.referencedClassKey !== undefined && relation.child === member.referencedClassKey
+        );
+      });
+
+      if (isRepresentedByStructuralChild) {
+        continue;
+      }
+
       children.push(
         createLeafNode(
           [...nodeIdParts, member.name],
@@ -615,12 +642,13 @@ function parseRelation(
   parent: string;
   child: string;
   signature: string;
+  label?: string;
   operator: {
     symbol: string;
     isStructural: boolean;
   };
 } | null {
-  const stripped = stripCardinalitySegments(line).replace(/\s*:\s*.+$/, "").trim();
+  const stripped = stripCardinalitySegments(line).trim();
   for (const symbol of RELATION_OPERATORS) {
     const index = stripped.indexOf(symbol);
     if (index === -1) {
@@ -628,10 +656,9 @@ function parseRelation(
     }
 
     const leftReference = parseClassReference(stripped.slice(0, index), namespaceStack);
-    const rightReference = parseClassReference(
-      stripped.slice(index + symbol.length),
-      namespaceStack,
-    );
+    const rightSegment = stripped.slice(index + symbol.length).trim();
+    const rightMatch = rightSegment.match(/^(.+?)(?:\s*:\s*(.+))?$/);
+    const rightReference = parseClassReference(rightMatch?.[1] ?? rightSegment, namespaceStack);
 
     if (!leftReference || !rightReference) {
       continue;
@@ -642,6 +669,7 @@ function parseRelation(
       parent: relation.parent,
       child: relation.child,
       signature: `${leftReference.rawName} ${symbol} ${rightReference.rawName}`,
+      label: rightMatch?.[2]?.trim(),
       operator: {
         symbol,
         isStructural: relation.isStructural,
@@ -731,6 +759,11 @@ function qualifyIdentifier(identifier: string, namespaceStack: string[]): string
   return `${namespaceStack.join(".")}.${identifier}`;
 }
 
+function getNamespaceSegmentsForClassKey(classKey: string): string[] {
+  const namespace = getNamespaceForClass(classKey);
+  return namespace ? namespace.split(".") : [];
+}
+
 function basenameFromQualifiedName(value: string): string {
   const parts = value.split(".");
   return parts[parts.length - 1] ?? value;
@@ -768,6 +801,65 @@ function extractMemberName(rawMember: string): string {
 
   const tokens = trimmed.replace(/^[+\-#~]/, "").trim().split(/\s+/);
   return tokens[tokens.length - 1] ?? trimmed;
+}
+
+function extractMemberClassReference(
+  rawMember: string,
+  namespaceStack: string[],
+): string | undefined {
+  const trimmed = rawMember.trim();
+  if (!trimmed.includes(":") || trimmed.includes("(")) {
+    return undefined;
+  }
+
+  const typeSection = trimmed
+    .slice(trimmed.indexOf(":") + 1)
+    .split("=")[0]
+    ?.trim();
+  if (!typeSection) {
+    return undefined;
+  }
+
+  const tokens = typeSection.match(/[A-Za-z_][A-Za-z0-9_.]*/g) ?? [];
+  for (const token of tokens) {
+    const normalized = normalizeIdentifier(token).replace(/\?+$/g, "");
+    if (!normalized || isScalarLikeType(normalized)) {
+      continue;
+    }
+
+    return qualifyIdentifier(normalized, namespaceStack);
+  }
+
+  return undefined;
+}
+
+function isScalarLikeType(typeName: string): boolean {
+  const normalized = typeName.toLowerCase();
+  return [
+    "any",
+    "array",
+    "bool",
+    "boolean",
+    "bytes",
+    "dict",
+    "double",
+    "float",
+    "int",
+    "integer",
+    "list",
+    "map",
+    "none",
+    "null",
+    "object",
+    "optional",
+    "sequence",
+    "set",
+    "str",
+    "string",
+    "tuple",
+    "union",
+    "unknown",
+  ].includes(normalized);
 }
 
 function getClassTitle(parsedClass: ParsedClass): string {
