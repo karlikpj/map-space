@@ -29,8 +29,8 @@ export interface VrPanelElements {
 }
 
 const PANEL_SIZE = {
-  width: 1.16,
-  height: 0.88,
+  width: 1.22,
+  height: 0.96,
 } as const;
 
 const BUTTON_SIZE = {
@@ -131,40 +131,44 @@ function drawPanelTexture(texture: THREE.CanvasTexture, state: VrPanelState): vo
   context.stroke();
 
   context.fillStyle = "#8b5e2d";
-  context.font = "700 34px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("VR MODE", 110, 88);
+  context.font = "700 28px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("SPATIAL DATA MODEL VIEWER", 110, 88);
+
+  context.fillStyle = "#7b8f96";
+  context.font = "700 24px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("VR MODE", 110, 128);
 
   context.fillStyle = "#7b8f96";
   context.font = "700 28px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText(state.selectionLabel.toUpperCase(), 110, 186);
+  context.fillText(state.selectionLabel.toUpperCase(), 110, 206);
 
   context.fillStyle = "#15343f";
   context.font = "700 72px Avenir Next, Trebuchet MS, sans-serif";
   const titleLines = wrapText(context, state.title, 1100, 2);
   titleLines.forEach((line, index) => {
-    context.fillText(line, 110, 282 + index * 80);
+    context.fillText(line, 110, 302 + index * 80);
   });
 
   context.fillStyle = "#2f5c64";
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Current Path", 110, 458);
+  context.fillText("Current Path", 110, 478);
 
   context.fillStyle = "#45616b";
   context.font = "500 34px Avenir Next, Trebuchet MS, sans-serif";
   const pathLines = wrapText(context, state.pathText, 1100, 2);
   pathLines.forEach((line, index) => {
-    context.fillText(line, 110, 514 + index * 42);
+    context.fillText(line, 110, 534 + index * 42);
   });
 
   context.fillStyle = "#2f5c64";
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Details", 110, 642);
+  context.fillText("Details", 110, 662);
 
   context.fillStyle = "#3a5660";
   context.font = "600 38px Avenir Next, Trebuchet MS, sans-serif";
   const subtitleLines = wrapText(context, state.subtitle, 1100, 3);
   subtitleLines.forEach((line, index) => {
-    context.fillText(line, 110, 698 + index * 46);
+    context.fillText(line, 110, 718 + index * 46);
   });
 
   texture.needsUpdate = true;
@@ -213,7 +217,7 @@ function createButton(action: VrPanelAction, x: number, label: string): VrButton
     new THREE.PlaneGeometry(BUTTON_SIZE.width, BUTTON_SIZE.height),
     material,
   );
-  mesh.position.set(x, -0.28, 0.02);
+  mesh.position.set(x, -0.34, 0.02);
   mesh.renderOrder = 41;
   mesh.userData.vrAction = action;
   drawButtonTexture(texture, label, false, false);

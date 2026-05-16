@@ -93,10 +93,8 @@ type ViewerUiState = {
 
 const XR_DIAGRAM_SCALE = 0.13;
 const XR_TABLE_DISTANCE = 2.25;
-const XR_TABLE_VERTICAL_OFFSET = -0.82;
-const XR_PANEL_DISTANCE = 1.1;
-const XR_PANEL_SIDE_OFFSET = -0.72;
-const XR_PANEL_VERTICAL_OFFSET = -0.14;
+const XR_TABLE_VERTICAL_OFFSET = -0.5;
+const XR_PANEL_LOCAL_OFFSET = new THREE.Vector3(-0.95, 0.56, 0.22);
 const XR_RAY_LENGTH = 6;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const FORWARD_AXIS = new THREE.Vector3(0, 0, 1);
@@ -130,6 +128,7 @@ export class SpatialViewer {
   private readonly currentFocusLocalPosition = FOCUS_POSITION.clone();
   private readonly xrAnchorWorldPosition = new THREE.Vector3();
   private readonly xrAnchorRotation = new THREE.Quaternion();
+  private readonly xrPanelWorldPosition = new THREE.Vector3();
 
   private lastFrameTime = 0;
   private disposed = false;
@@ -917,30 +916,18 @@ export class SpatialViewer {
       return;
     }
 
+    if (!this.xrAnchorInitialized) {
+      return;
+    }
+
     const xrCamera = this.renderer.xr.getCamera();
     const cameraPosition = new THREE.Vector3();
-    const forward = new THREE.Vector3();
-
     xrCamera.getWorldPosition(cameraPosition);
-    xrCamera.getWorldDirection(forward);
-    forward.y = 0;
-    if (forward.lengthSq() < 0.0001) {
-      forward.set(0, 0, -1);
-    }
-    forward.normalize();
 
-    const right = new THREE.Vector3().crossVectors(forward, WORLD_UP).normalize();
-    const panelPosition = cameraPosition
-      .clone()
-      .add(forward.clone().multiplyScalar(XR_PANEL_DISTANCE))
-      .add(right.multiplyScalar(XR_PANEL_SIDE_OFFSET))
-      .add(new THREE.Vector3(0, XR_PANEL_VERTICAL_OFFSET, 0));
-
-    this.vrPanel.root.position.copy(panelPosition);
-    this.vrPanel.root.quaternion.setFromUnitVectors(
-      FORWARD_AXIS,
-      forward.clone().multiplyScalar(-1),
-    );
+    const localOffset = XR_PANEL_LOCAL_OFFSET.clone().applyQuaternion(this.xrAnchorRotation);
+    this.xrPanelWorldPosition.copy(this.xrAnchorWorldPosition).add(localOffset);
+    this.vrPanel.root.position.copy(this.xrPanelWorldPosition);
+    this.vrPanel.root.lookAt(cameraPosition);
   }
 
   private updateXRInteractionState(): void {
