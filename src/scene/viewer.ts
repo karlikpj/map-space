@@ -26,6 +26,11 @@ type ViewerOptions = {
   resetButton: HTMLButtonElement;
   xrButtonMountEl: HTMLDivElement;
   data: DiagramNode;
+  modelLabel: string;
+  canGoToPreviousModel: boolean;
+  canGoToNextModel: boolean;
+  onPreviousModelRequest: () => void;
+  onNextModelRequest: () => void;
 };
 
 type RuntimeNode = {
@@ -87,6 +92,9 @@ type ViewerUiState = {
   selectedTitle: string;
   selectedSubtitle: string;
   pathText: string;
+  modelLabel: string;
+  previousModelDisabled: boolean;
+  nextModelDisabled: boolean;
   backDisabled: boolean;
   resetDisabled: boolean;
 };
@@ -112,6 +120,8 @@ export class SpatialViewer {
   private readonly backButton: HTMLButtonElement;
   private readonly resetButton: HTMLButtonElement;
   private readonly xrButtonMountEl: HTMLDivElement;
+  private readonly onPreviousModelRequest: () => void;
+  private readonly onNextModelRequest: () => void;
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(44, 1, 0.1, 60);
   private readonly renderer = new THREE.WebGLRenderer({
@@ -145,6 +155,9 @@ export class SpatialViewer {
   private xrHoveredAction: VrPanelAction | null = null;
   private isXRPresenting = false;
   private xrAnchorInitialized = false;
+  private modelLabel: string;
+  private canGoToPreviousModel: boolean;
+  private canGoToNextModel: boolean;
 
   constructor(options: ViewerOptions) {
     this.container = options.container;
@@ -154,6 +167,11 @@ export class SpatialViewer {
     this.backButton = options.backButton;
     this.resetButton = options.resetButton;
     this.xrButtonMountEl = options.xrButtonMountEl;
+    this.onPreviousModelRequest = options.onPreviousModelRequest;
+    this.onNextModelRequest = options.onNextModelRequest;
+    this.modelLabel = options.modelLabel;
+    this.canGoToPreviousModel = options.canGoToPreviousModel;
+    this.canGoToNextModel = options.canGoToNextModel;
 
     this.renderer.domElement.className = "viewer-canvas";
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -230,6 +248,30 @@ export class SpatialViewer {
     this.updateLayout();
   }
 
+  setData(
+    data: DiagramNode,
+    options: {
+      modelLabel: string;
+      canGoToPreviousModel: boolean;
+      canGoToNextModel: boolean;
+    },
+  ): void {
+    this.clearRuntimeGraph();
+    this.modelLabel = options.modelLabel;
+    this.canGoToPreviousModel = options.canGoToPreviousModel;
+    this.canGoToNextModel = options.canGoToNextModel;
+    this.rootNode = this.buildRuntime(data, null, 0);
+    this.focusNode = this.rootNode;
+    this.selectedNode = this.rootNode;
+    this.inspectedLeafNode = null;
+    this.hoveredNode = null;
+    this.xrHoveredAction = null;
+    if (!this.isXRPresenting) {
+      this.renderer.domElement.style.cursor = "grab";
+    }
+    this.updateLayout(true);
+  }
+
   dispose(): void {
     if (this.disposed) {
       return;
@@ -257,15 +299,7 @@ export class SpatialViewer {
       controllerState.rayMaterial.dispose();
     }
 
-    for (const node of this.nodes) {
-      node.visual.frame.geometry.dispose();
-      node.visual.frameMaterial.dispose();
-      node.visual.outline.geometry.dispose();
-      node.visual.outlineMaterial.dispose();
-      node.visual.label.geometry.dispose();
-      node.visual.labelMaterial.dispose();
-      node.visual.texture.dispose();
-    }
+    this.clearRuntimeGraph();
 
     this.vrPanel.panelMesh.geometry.dispose();
     this.vrPanel.panelMaterial.dispose();
@@ -275,11 +309,6 @@ export class SpatialViewer {
       button.material.dispose();
       button.texture.dispose();
     });
-
-    for (const edge of this.edges) {
-      edge.line.geometry.dispose();
-      edge.material.dispose();
-    }
 
     this.renderer.dispose();
     this.container.replaceChildren();
@@ -424,6 +453,28 @@ export class SpatialViewer {
     }
 
     return runtimeNode;
+  }
+
+  private clearRuntimeGraph(): void {
+    for (const edge of this.edges) {
+      this.sceneRoot.remove(edge.line);
+      edge.line.geometry.dispose();
+      edge.material.dispose();
+    }
+    this.edges.length = 0;
+
+    for (const node of this.nodes) {
+      this.sceneRoot.remove(node.visual.group);
+      node.visual.frame.geometry.dispose();
+      node.visual.frameMaterial.dispose();
+      node.visual.outline.geometry.dispose();
+      node.visual.outlineMaterial.dispose();
+      node.visual.label.geometry.dispose();
+      node.visual.labelMaterial.dispose();
+      node.visual.texture.dispose();
+    }
+    this.nodes.length = 0;
+    this.pickables.length = 0;
   }
 
   private createEdge(parent: RuntimeNode, child: RuntimeNode): RuntimeEdge {
@@ -596,6 +647,22 @@ export class SpatialViewer {
   }
 
   private performVrAction(action: VrPanelAction): void {
+    if (action === "previous-model") {
+      if (this.canGoToPreviousModel) {
+        this.xrHoveredAction = null;
+        this.onPreviousModelRequest();
+      }
+      return;
+    }
+
+    if (action === "next-model") {
+      if (this.canGoToNextModel) {
+        this.xrHoveredAction = null;
+        this.onNextModelRequest();
+      }
+      return;
+    }
+
     if (action === "back") {
       this.goBack();
       return;
@@ -844,6 +911,9 @@ export class SpatialViewer {
       title: state.selectedTitle,
       subtitle: state.selectedSubtitle,
       pathText: state.pathText,
+      modelLabel: state.modelLabel,
+      previousModelDisabled: state.previousModelDisabled,
+      nextModelDisabled: state.nextModelDisabled,
       backDisabled: state.backDisabled,
       resetDisabled: state.resetDisabled,
       hoveredAction: this.xrHoveredAction,
@@ -863,6 +933,9 @@ export class SpatialViewer {
       selectedTitle: this.selectedNode.data.title,
       selectedSubtitle: this.selectedNode.data.subtitle ?? "No extra metadata for this node.",
       pathText: focusPath.map((node) => node.data.title).join(" / "),
+      modelLabel: this.modelLabel,
+      previousModelDisabled: !this.canGoToPreviousModel,
+      nextModelDisabled: !this.canGoToNextModel,
       backDisabled: this.inspectedLeafNode === null && this.focusNode.parent === null,
       resetDisabled:
         this.inspectedLeafNode === null &&
@@ -872,6 +945,14 @@ export class SpatialViewer {
   }
 
   private isVrActionEnabled(action: VrPanelAction): boolean {
+    if (action === "previous-model") {
+      return this.canGoToPreviousModel;
+    }
+
+    if (action === "next-model") {
+      return this.canGoToNextModel;
+    }
+
     if (action === "back") {
       return this.inspectedLeafNode !== null || this.focusNode.parent !== null;
     }
