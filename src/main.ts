@@ -1,5 +1,5 @@
 import "./styles.css";
-import { studyDesignModel } from "./data/model";
+import { getModelSources, loadModelSource } from "./data/mermaidModels";
 import { SpatialViewer } from "./scene/viewer";
 
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -11,14 +11,19 @@ if (!app) {
 app.innerHTML = `
   <div class="app-shell">
     <section id="hud" class="hud" aria-label="Viewer controls">
-      <p class="eyebrow">Study Data Model</p>
-      <h1>Spatial Data Model Viewer</h1>
+      <p class="eyebrow">Mermaid Class Diagram</p>
+      <h1>Spatial Mermaid Viewer</h1>
       <p class="hud-copy">
-        Click a branch card to reveal its next layer. Click an end card to
-        inspect it in the center, then click again to return it. Drag to orbit,
-        scroll to zoom, and use the breadcrumb trail to climb back up the
-        model. On supported headsets, you can also enter VR.
+        Pick a Mermaid class diagram from the bundled <code>src/models/</code>
+        files. Branch cards reveal the next layer, end cards inspect in the
+        center, and a second click returns them. Drag to orbit, scroll to zoom,
+        and use the breadcrumb trail to climb back up the model.
       </p>
+      <div class="model-picker">
+        <label class="model-label" for="model-select">Model</label>
+        <select id="model-select" class="model-select" aria-label="Select Mermaid model"></select>
+      </div>
+      <p id="hud-error" class="hud-error" role="status" aria-live="polite" hidden></p>
       <div id="breadcrumbs" class="breadcrumbs" aria-label="Hierarchy path"></div>
       <div class="hud-actions">
         <button id="back-button" class="hud-button" type="button">Back</button>
@@ -35,6 +40,8 @@ const hud = document.querySelector<HTMLElement>("#hud");
 const sceneRoot = document.querySelector<HTMLDivElement>("#scene-root");
 const breadcrumbs = document.querySelector<HTMLDivElement>("#breadcrumbs");
 const details = document.querySelector<HTMLDivElement>("#selection-details");
+const modelSelect = document.querySelector<HTMLSelectElement>("#model-select");
+const hudError = document.querySelector<HTMLElement>("#hud-error");
 const backButton = document.querySelector<HTMLButtonElement>("#back-button");
 const resetButton = document.querySelector<HTMLButtonElement>("#reset-button");
 const xrButtonSlot = document.querySelector<HTMLDivElement>("#xr-button-slot");
@@ -44,6 +51,8 @@ if (
   !sceneRoot ||
   !breadcrumbs ||
   !details ||
+  !modelSelect ||
+  !hudError ||
   !backButton ||
   !resetButton ||
   !xrButtonSlot
@@ -51,25 +60,140 @@ if (
   throw new Error("Viewer shell is missing required elements.");
 }
 
-const viewer = new SpatialViewer({
-  container: sceneRoot,
-  hudEl: hud,
-  breadcrumbEl: breadcrumbs,
-  detailsEl: details,
-  backButton,
-  resetButton,
-  xrButtonMountEl: xrButtonSlot,
-  data: studyDesignModel,
+const hudEl = hud;
+const sceneRootEl = sceneRoot;
+const breadcrumbsEl = breadcrumbs;
+const detailsEl = details;
+const modelSelectEl = modelSelect;
+const hudErrorEl = hudError;
+const backButtonEl = backButton;
+const resetButtonEl = resetButton;
+const xrButtonSlotEl = xrButtonSlot;
+
+const modelSources = getModelSources();
+
+let activeViewer: SpatialViewer | null = null;
+let activeModelId: string | null = null;
+let lastGoodModelId: string | null = null;
+let loadSequence = 0;
+
+function setHudError(message: string | null): void {
+  hudErrorEl.hidden = message === null;
+  hudErrorEl.textContent = message ?? "";
+}
+
+function setNoViewerState(title: string, subtitle: string): void {
+  breadcrumbsEl.replaceChildren();
+  detailsEl.innerHTML = `
+    <p class="selection-label">Viewer status</p>
+    <p class="selection-title">${title}</p>
+    <p class="selection-subtitle">${subtitle}</p>
+  `;
+  backButtonEl.disabled = true;
+  resetButtonEl.disabled = true;
+}
+
+function disposeViewer(): void {
+  activeViewer?.dispose();
+  activeViewer = null;
+}
+
+function populateModelOptions(): void {
+  modelSelectEl.replaceChildren();
+
+  modelSources.forEach((source) => {
+    const option = document.createElement("option");
+    option.value = source.id;
+    option.textContent = source.label;
+    modelSelectEl.append(option);
+  });
+}
+
+async function showModel(modelId: string): Promise<void> {
+  const source = modelSources.find((entry) => entry.id === modelId);
+  if (!source) {
+    return;
+  }
+
+  const requestId = loadSequence + 1;
+  loadSequence = requestId;
+  modelSelectEl.disabled = true;
+  setHudError(null);
+
+  try {
+    const result = await loadModelSource(source);
+    if (requestId !== loadSequence) {
+      return;
+    }
+
+    if (!result.ok) {
+      setHudError(result.error);
+      if (lastGoodModelId) {
+        modelSelectEl.value = lastGoodModelId;
+        activeModelId = lastGoodModelId;
+      } else {
+        activeModelId = null;
+        disposeViewer();
+        setNoViewerState(
+          "No valid model loaded",
+          "Choose another Mermaid class diagram or fix the selected file in src/models/.",
+        );
+      }
+      return;
+    }
+
+    disposeViewer();
+    activeViewer = new SpatialViewer({
+      container: sceneRootEl,
+      hudEl,
+      breadcrumbEl: breadcrumbsEl,
+      detailsEl,
+      backButton: backButtonEl,
+      resetButton: resetButtonEl,
+      xrButtonMountEl: xrButtonSlotEl,
+      data: result.model,
+    });
+    activeModelId = source.id;
+    lastGoodModelId = source.id;
+    modelSelectEl.value = source.id;
+    setHudError(null);
+  } finally {
+    if (requestId === loadSequence) {
+      modelSelectEl.disabled = modelSources.length === 0;
+    }
+  }
+}
+
+populateModelOptions();
+
+if (modelSources.length === 0) {
+  modelSelectEl.disabled = true;
+  setHudError("No Mermaid model files were found in src/models/.");
+  setNoViewerState(
+    "No model loaded",
+    "Add .mmd or .mermaid files to src/models/ to populate the selector.",
+  );
+} else {
+  modelSelectEl.value = modelSources[0].id;
+  void showModel(modelSources[0].id);
+}
+
+modelSelectEl.addEventListener("change", () => {
+  const nextModelId = modelSelectEl.value;
+  if (!nextModelId || nextModelId === activeModelId) {
+    return;
+  }
+  void showModel(nextModelId);
 });
 
-backButton.addEventListener("click", () => {
-  viewer.goBack();
+backButtonEl.addEventListener("click", () => {
+  activeViewer?.goBack();
 });
 
-resetButton.addEventListener("click", () => {
-  viewer.reset();
+resetButtonEl.addEventListener("click", () => {
+  activeViewer?.reset();
 });
 
 window.addEventListener("beforeunload", () => {
-  viewer.dispose();
+  disposeViewer();
 });

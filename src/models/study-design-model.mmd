@@ -1,0 +1,212 @@
+classDiagram
+direction LR
+
+class StudyDesign {
+  +design_type
+  +multicenter
+  +prospective
+}
+
+class DesignType["Design Type"]
+class DesignType {
+  <<Enumeration>>
+  RCT_double_blind
+  RCT_single_blind
+  RCT_open_label
+  meta_analysis
+  nonrandomized_controlled
+  cohort_prospective
+  cohort_retrospective
+  case_control
+  case_series
+  cross_sectional
+  systematic_review
+  observational_other
+  noninferiority_trial
+  modeling_study
+  unknown
+}
+
+class Multicenter {
+  <<Enumeration>>
+  yes
+  no
+  not_applicable
+  unknown
+}
+
+class Prospective {
+  <<Enumeration>>
+  yes
+  no
+  not_applicable
+  unknown
+}
+
+class TrialPhase["Trial Phase"]
+class TrialPhase {
+  +unknown
+  +not_applicable
+}
+
+class TrialPhasesList["Trial Phases List"]
+class TrialPhasesList {
+  <<Enumeration>>
+  early_phase_1
+  phase_1
+  phase_2
+  phase_3
+  phase_4
+}
+
+StudyDesign *-- DesignType
+StudyDesign *-- Multicenter
+StudyDesign *-- Prospective
+StudyDesign *-- TrialPhase
+TrialPhase *-- TrialPhasesList
+
+class PicoElements
+class Population {
+  +cancer_type
+  +cancer_stage
+}
+
+class AgeGroup["Age Group"]
+class AgeGroup {
+  <<Enumeration>>
+  pediatric
+  adult
+  both
+  unknown
+}
+
+class SampleSize["Sample Size"]
+class SampleSize {
+  +unknown
+  +not_applicable
+}
+
+class SampleSizeValue["Sample Size Value"]
+class SampleSizeValue {
+  +value
+}
+
+Population *-- AgeGroup
+Population *-- SampleSize
+SampleSize *-- SampleSizeValue
+
+class Intervention {
+  +primary_intervention
+}
+
+class InterventionType["Intervention Type"]
+class InterventionType {
+  <<Enumeration>>
+  chemotherapy
+  targeted_therapy
+  immunotherapy
+  radiation
+  surgery
+  combination
+  supportive_care
+  diagnostic
+  other
+  unknown
+}
+
+Intervention *-- InterventionType
+
+class Outcomes {
+  +study_conclusions
+}
+
+class PrimaryEndpointsChoice["Primary Endpoints"]
+class PrimaryEndpointsChoice {
+  +unknown
+  +not_applicable
+}
+
+class PrimaryEndpointsList["Primary Endpoints List"]
+
+class PrimaryEndpoint {
+  +primary_endpoint_text
+  +primary_endpoint_results
+  +statistical_significance_assessment_reason
+}
+
+class PrimaryEndpointCategory["Primary Endpoint Category"]
+class PrimaryEndpointCategory {
+  <<Enumeration>>
+  overall_survival
+  cause_specific_mortality
+  total_mortality
+  quality_of_life
+  event_free_survival
+  relapse_free_survival
+  disease_free_survival
+  progression_free_survival
+  tumor_response
+  biomarker
+  safety
+  expert_opinion
+}
+
+class StatisticalSignificanceAssessment["Statistical Significance Assessment"]
+class StatisticalSignificanceAssessment {
+  <<Enumeration>>
+  not_statistically_significant
+  statistically_significant_with_a_narrow_confidence_interval
+  statistically_significant_with_a_wide_confidence_interval
+  statistically_significant_with_unknown_confidence_interval
+  not_determined_based_on_info_provided
+}
+
+PrimaryEndpointsChoice *-- PrimaryEndpointsList
+PrimaryEndpointsList *-- PrimaryEndpoint
+PrimaryEndpoint *-- PrimaryEndpointCategory
+PrimaryEndpoint *-- StatisticalSignificanceAssessment
+
+class SecondaryEndpointsChoice["Secondary Endpoints"]
+class SecondaryEndpointsChoice {
+  +unknown
+}
+
+class SecondaryEndpointsList["Secondary Endpoints List"]
+class SecondaryEndpointsList {
+  +values
+}
+
+SecondaryEndpointsChoice *-- SecondaryEndpointsList
+
+class ConclusionsCategory["Conclusions Category"]
+class ConclusionsCategory {
+  <<Enumeration>>
+  not_determinable
+  no_meaningful_findings_more_research_needed
+  solid_findings_more_research_needed
+  actionable_findings_system_changes_needed
+  clear_findings_ready_for_implementation
+}
+
+Outcomes *-- PrimaryEndpointsChoice
+Outcomes *-- SecondaryEndpointsChoice
+Outcomes *-- ConclusionsCategory
+
+PicoElements *-- Population
+PicoElements *-- Intervention
+PicoElements *-- Outcomes
+
+class ExtractionConfidence {
+  +missing_critical_elements
+  +extraction_notes
+}
+
+class OverallConfidence["Overall Confidence"]
+class OverallConfidence {
+  <<Enumeration>>
+  high
+  moderate
+  low
+}
+
+ExtractionConfidence *-- OverallConfidence

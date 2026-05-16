@@ -1,6 +1,6 @@
 # Map Space
 
-A small Vite + TypeScript + Three.js app for exploring a study data model as a spatial, clickable 3D hierarchy.
+A small Vite + TypeScript + Three.js app for exploring Mermaid class diagrams as a spatial, clickable 3D hierarchy.
 
 <img src=splash.png width=640>
 
@@ -17,7 +17,29 @@ npm install
 npm run dev
 ```
 
-Open the local Vite URL in your browser, then click nodes to drill into the model.
+Open the local Vite URL in your browser, then choose a model from the HUD selector and click nodes to drill into it.
+
+## Models
+
+Mermaid source files now live in `src/models/`.
+
+- Add `.mmd` or `.mermaid` files to that folder to make them available in the HUD dropdown.
+- This viewer currently supports Mermaid `classDiagram` files only.
+- Invalid or unsupported files show an error in the HUD and keep the last valid model active.
+
+### Supported Class-Diagram Features
+
+- Standalone classes and block-form classes
+- Class members declared inside blocks or with `Class : member` lines
+- Class labels
+- `<<Enumeration>>` annotations
+- Structural nesting from composition, aggregation, inheritance, and realization links
+
+### Ignored For Tree Layout
+
+- Non-structural relations such as associations and dependencies
+- Display-only directives such as `direction`, `style`, `classDef`, `cssClass`, `click`, `link`, and `note`
+- Namespace groupings are flattened into class metadata rather than shown as their own branches
 
 ## VR Mode
 
@@ -48,12 +70,15 @@ This project includes an optional WebXR VR mode alongside the normal desktop vie
 - `Vite` for the frontend build and dev server
 - `TypeScript` for app code and model structure
 - `Three.js` for the 3D scene, cards, connectors, and interaction
+- `Mermaid` for class-diagram syntax validation
 - `WebXR` via Three.js for immersive VR mode
 - `GitHub Actions + GitHub Pages` for deployment
 
 ## Project Shape
 
-- [src/data/model.ts](/Users/karlikpj/Sites/map-space/src/data/model.ts:1): hand-authored tree representation of the Mermaid data model
+- [src/models](/Users/karlikpj/Sites/map-space/src/models): Mermaid class-diagram source files surfaced in the HUD selector
+- [src/data/diagram.ts](/Users/karlikpj/Sites/map-space/src/data/diagram.ts:1): shared viewer node types and label/id helpers
+- [src/data/mermaidModels.ts](/Users/karlikpj/Sites/map-space/src/data/mermaidModels.ts:1): model discovery, Mermaid validation, and class-diagram-to-tree conversion
 - [src/scene/viewer.ts](/Users/karlikpj/Sites/map-space/src/scene/viewer.ts:1): scene setup, interaction, animation, and navigation state
 - [src/scene/layout.ts](/Users/karlikpj/Sites/map-space/src/scene/layout.ts:1): node positioning rules for focus, ancestors, and child columns
 - [src/scene/nodeFactory.ts](/Users/karlikpj/Sites/map-space/src/scene/nodeFactory.ts:1): card mesh creation and canvas-based labels
@@ -72,5 +97,5 @@ To publish successfully:
 
 ## Notes
 
-- The data model is currently maintained manually in `src/data/model.ts`.
-- This app is a viewer for the current schema, not a general Mermaid parser.
+- The spatial viewer still consumes a tree, so Mermaid class graphs are converted into a deterministic tree shape for display.
+- This is intentionally a Mermaid class-diagram viewer, not a full viewer for every Mermaid diagram type yet.

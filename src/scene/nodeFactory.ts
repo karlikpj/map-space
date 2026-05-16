@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import type { DiagramNode, NodeKind } from "../data/model";
+import type { DiagramNode, NodeKind } from "../data/diagram";
 
 export const CARD_SIZE = {
   width: 3.15,

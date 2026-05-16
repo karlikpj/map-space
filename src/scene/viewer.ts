@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { VRButton } from "three/addons/webxr/VRButton.js";
-import type { DiagramNode } from "../data/model";
+import type { DiagramNode } from "../data/diagram";
 import { dampNumber, dampVector3 } from "./animation";
 import {
   FOCUS_POSITION,
