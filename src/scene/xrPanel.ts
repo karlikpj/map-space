@@ -37,8 +37,8 @@ const PANEL_SIZE = {
 } as const;
 
 const BUTTON_SIZE = {
-  width: 0.31,
-  height: 0.115,
+  width: 0.27,
+  height: 0.095,
 } as const;
 
 function drawRoundedRect(
@@ -146,43 +146,43 @@ function drawPanelTexture(texture: THREE.CanvasTexture, state: VrPanelState): vo
   context.fillText(state.selectionLabel.toUpperCase(), 110, 206);
 
   context.fillStyle = "#15343f";
-  context.font = "700 72px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "700 64px Avenir Next, Trebuchet MS, sans-serif";
   const titleLines = wrapText(context, state.title, 1100, 2);
   titleLines.forEach((line, index) => {
-    context.fillText(line, 110, 302 + index * 80);
+    context.fillText(line, 110, 286 + index * 70);
   });
 
   context.fillStyle = "#2f5c64";
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Loaded Model", 110, 442);
+  context.fillText("Loaded Model", 110, 548);
 
   context.fillStyle = "#45616b";
-  context.font = "600 38px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "600 34px Avenir Next, Trebuchet MS, sans-serif";
   const modelLines = wrapText(context, state.modelLabel, 1100, 2);
   modelLines.forEach((line, index) => {
-    context.fillText(line, 110, 498 + index * 44);
+    context.fillText(line, 110, 598 + index * 40);
   });
 
   context.fillStyle = "#2f5c64";
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Current Path", 110, 622);
+  context.fillText("Current Path", 110, 712);
 
   context.fillStyle = "#45616b";
-  context.font = "500 34px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "500 31px Avenir Next, Trebuchet MS, sans-serif";
   const pathLines = wrapText(context, state.pathText, 1100, 2);
   pathLines.forEach((line, index) => {
-    context.fillText(line, 110, 678 + index * 42);
+    context.fillText(line, 110, 762 + index * 38);
   });
 
   context.fillStyle = "#2f5c64";
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Details", 110, 804);
+  context.fillText("Details", 110, 864);
 
   context.fillStyle = "#3a5660";
-  context.font = "600 38px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "600 34px Avenir Next, Trebuchet MS, sans-serif";
   const subtitleLines = wrapText(context, state.subtitle, 1100, 3);
   subtitleLines.forEach((line, index) => {
-    context.fillText(line, 110, 860 + index * 46);
+    context.fillText(line, 110, 914 + index * 42);
   });
 
   texture.needsUpdate = true;
@@ -253,10 +253,10 @@ export function createVrPanel(): VrPanelElements {
   );
   panelMesh.renderOrder = 40;
 
-  const previousModelButton = createButton("previous-model", -0.205, -0.22, "Prev Model");
-  const nextModelButton = createButton("next-model", 0.205, -0.22, "Next Model");
-  const backButton = createButton("back", -0.205, -0.36, "Back");
-  const resetButton = createButton("reset", 0.205, -0.36, "Reset");
+  const previousModelButton = createButton("previous-model", -0.18, 0.12, "Prev Model");
+  const nextModelButton = createButton("next-model", 0.18, 0.12, "Next Model");
+  const backButton = createButton("back", -0.18, -0.36, "Back");
+  const resetButton = createButton("reset", 0.18, -0.36, "Reset");
 
   const root = new THREE.Group();
   root.visible = false;
