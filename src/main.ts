@@ -14,9 +14,10 @@ app.innerHTML = `
       <p class="eyebrow">Study Data Model</p>
       <h1>Spatial Data Model Viewer</h1>
       <p class="hud-copy">
-        Click a card to reveal its next layer. Drag to orbit, scroll to zoom,
-        and use the breadcrumb trail to climb back up the model. On supported
-        headsets, you can also enter VR.
+        Click a branch card to reveal its next layer. Click an end card to
+        inspect it in the center, then click again to return it. Drag to orbit,
+        scroll to zoom, and use the breadcrumb trail to climb back up the
+        model. On supported headsets, you can also enter VR.
       </p>
       <div id="breadcrumbs" class="breadcrumbs" aria-label="Hierarchy path"></div>
       <div class="hud-actions">

@@ -140,6 +140,7 @@ export class SpatialViewer {
   private rootNode!: RuntimeNode;
   private focusNode!: RuntimeNode;
   private selectedNode!: RuntimeNode;
+  private inspectedLeafNode: RuntimeNode | null = null;
   private hoveredNode: RuntimeNode | null = null;
   private xrHoveredAction: VrPanelAction | null = null;
   private isXRPresenting = false;
@@ -201,6 +202,14 @@ export class SpatialViewer {
   }
 
   goBack(): void {
+    if (this.inspectedLeafNode) {
+      this.inspectedLeafNode = null;
+      this.hoveredNode = null;
+      this.xrHoveredAction = null;
+      this.updateLayout();
+      return;
+    }
+
     if (!this.focusNode.parent) {
       return;
     }
@@ -213,6 +222,7 @@ export class SpatialViewer {
   }
 
   reset(): void {
+    this.inspectedLeafNode = null;
     this.focusNode = this.rootNode;
     this.selectedNode = this.rootNode;
     this.hoveredNode = null;
@@ -571,9 +581,14 @@ export class SpatialViewer {
     this.xrHoveredAction = null;
 
     if (node.children.length > 0) {
+      this.inspectedLeafNode = null;
       this.focusNode = node;
       this.selectedNode = node;
+    } else if (this.inspectedLeafNode === node) {
+      this.inspectedLeafNode = null;
+      this.selectedNode = node;
     } else {
+      this.inspectedLeafNode = node;
       this.selectedNode = node;
     }
 
@@ -676,22 +691,27 @@ export class SpatialViewer {
     const ancestors = focusPath.slice(0, -1);
     const children = this.focusNode.children;
     const currentFocusPosition = getFocusPosition(this.focusNode.depth);
-    const ancestorPositions = getAncestorPositions(ancestors.length, currentFocusPosition);
-    const childPositions = getChildPositions(children.length, currentFocusPosition);
-    const visibleNodes = new Set<RuntimeNode>([...focusPath, ...children]);
+    const displayFocusNode = this.inspectedLeafNode ?? this.focusNode;
+    const contextNodes = this.inspectedLeafNode ? focusPath : ancestors;
+    const displayChildren = this.inspectedLeafNode ? [] : children;
+    const ancestorPositions = getAncestorPositions(contextNodes.length, currentFocusPosition);
+    const childPositions = getChildPositions(displayChildren.length, currentFocusPosition);
+    const visibleNodes = this.inspectedLeafNode
+      ? new Set<RuntimeNode>([...focusPath, displayFocusNode])
+      : new Set<RuntimeNode>([...focusPath, ...displayChildren]);
     this.currentFocusLocalPosition.copy(currentFocusPosition);
 
     for (const node of this.nodes) {
-      const ancestorIndex = ancestors.indexOf(node);
-      const childIndex = children.indexOf(node);
+      const contextIndex = contextNodes.indexOf(node);
+      const childIndex = displayChildren.indexOf(node);
 
-      if (node === this.focusNode) {
+      if (node === displayFocusNode) {
         node.targetPosition.copy(currentFocusPosition);
         node.targetScale = 1.08;
         node.targetOpacity = 1;
         node.targetEmphasis = node === this.hoveredNode ? 1.15 : 0.92;
-      } else if (ancestorIndex >= 0) {
-        node.targetPosition.copy(ancestorPositions[ancestorIndex]);
+      } else if (contextIndex >= 0) {
+        node.targetPosition.copy(ancestorPositions[contextIndex]);
         node.targetScale = 0.74;
         node.targetOpacity = 0.92;
         node.targetEmphasis = node === this.hoveredNode ? 0.72 : 0.34;
@@ -733,12 +753,19 @@ export class SpatialViewer {
 
     for (const edge of this.edges) {
       const isPathEdge = pathSet.has(edge.parent) && pathSet.has(edge.child);
+      const isInspectedLeafEdge =
+        this.inspectedLeafNode !== null &&
+        edge.parent === this.focusNode &&
+        edge.child === this.inspectedLeafNode;
       const isFocusedChild = edge.parent === this.focusNode && edge.child.parent === this.focusNode;
 
       if (isPathEdge) {
         edge.targetOpacity = 0.86;
         edge.route = "direct";
-      } else if (isFocusedChild) {
+      } else if (isInspectedLeafEdge) {
+        edge.targetOpacity = 0.78;
+        edge.route = "direct";
+      } else if (!this.inspectedLeafNode && isFocusedChild) {
         edge.targetOpacity = edge.child === this.selectedNode ? 0.72 : 0.44;
         edge.route = "elbow";
       } else {
@@ -793,6 +820,7 @@ export class SpatialViewer {
       button.className = index === state.focusPath.length - 1 ? "breadcrumb is-active" : "breadcrumb";
       button.textContent = node.data.title;
       button.addEventListener("click", () => {
+        this.inspectedLeafNode = null;
         this.focusNode = node;
         this.selectedNode = node;
         this.hoveredNode = null;
@@ -827,21 +855,32 @@ export class SpatialViewer {
 
     return {
       focusPath,
-      selectionLabel: this.selectedNode.children.length > 0 ? "Expanded node" : "Selected field",
+      selectionLabel: this.inspectedLeafNode
+        ? "Inspecting field"
+        : this.selectedNode.children.length > 0
+          ? "Expanded node"
+          : "Selected field",
       selectedTitle: this.selectedNode.data.title,
       selectedSubtitle: this.selectedNode.data.subtitle ?? "No extra metadata for this node.",
       pathText: focusPath.map((node) => node.data.title).join(" / "),
-      backDisabled: this.focusNode.parent === null,
-      resetDisabled: this.focusNode === this.rootNode && this.selectedNode === this.rootNode,
+      backDisabled: this.inspectedLeafNode === null && this.focusNode.parent === null,
+      resetDisabled:
+        this.inspectedLeafNode === null &&
+        this.focusNode === this.rootNode &&
+        this.selectedNode === this.rootNode,
     };
   }
 
   private isVrActionEnabled(action: VrPanelAction): boolean {
     if (action === "back") {
-      return this.focusNode.parent !== null;
+      return this.inspectedLeafNode !== null || this.focusNode.parent !== null;
     }
 
-    return !(this.focusNode === this.rootNode && this.selectedNode === this.rootNode);
+    return !(
+      this.inspectedLeafNode === null &&
+      this.focusNode === this.rootNode &&
+      this.selectedNode === this.rootNode
+    );
   }
 
   private readonly animate = (time: number): void => {
