@@ -1,0 +1,63 @@
+classDiagram
+    class PubMedArticleModel {
+        +pubmed_type: string = "article"
+        +pmid: string
+        +url: string
+        +nlm_journal_unique_id: string?
+
+        +title: string
+        +abstract: string?
+
+        +authors: List~string~
+        +author_list: List~string~
+        +authors_str: string = ""
+        +author1_last_fm: string?
+        +author1_lastfm: string?
+
+        +journal: string = ""
+        +year: string?
+        +volume: string?
+        +issue: string?
+        +volume_issue: string?
+        +pages: string?
+        +first_page: string?
+        +last_page: string?
+
+        +doi: string?
+        +pii: string?
+        +pmc: string?
+        +issn: string?
+
+        +keywords: List~string~
+        +mesh: Dict~string, Any~
+        +chemicals: Dict~string, Any~
+        +publication_types: Dict~string, string~
+
+        +grants: List~Any~
+        +history: Dict~string, string~
+
+        +book_accession_id: string?
+        +book_title: string?
+        +book_publisher: string?
+        +book_language: string?
+        +book_editors: string?
+        +book_abstracts: string?
+        +book_sections: string?
+        +book_copyright: string?
+        +book_medium: string?
+        +book_synonyms: string?
+        +book_publication_status: string?
+        +book_history: string?
+        +book_contribution_date: string?
+        +book_date_revised: string?
+
+        +xml: bytes?
+        +root: string? (_root alias)
+        +content: Any?
+
+        +convert_history_dates(v) Dict~string, string~
+        +convert_author_objects(v) List~string~
+        +to_citation() string
+    }
+
+    note for PubMedArticleModel "Pydantic BaseModel\nxml and content are excluded from serialization\nroot is populated from alias _root\nmodel_config sets populate_by_name = true"

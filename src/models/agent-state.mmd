@@ -1,0 +1,36 @@
+classDiagram
+    class AgentState {
+        +pubmed_article: PubMedArticleModel
+        +determination: DeterminationType?
+        +determination_reason: DeterminationReason?
+        +determination_additional_text: string?
+        +study_design: StudyDesignModel?
+        +initial_evidence_score: TotalEvidenceScore?
+        +error: string?
+    }
+
+    class PubMedArticleModel
+    class StudyDesignModel
+    class TotalEvidenceScore
+    class DeterminationType {
+        <<enumeration>>
+        in_scope
+        out_of_scope
+    }
+
+    class DeterminationReason {
+        <<enumeration>>
+        no_matching_flow
+        pubmed_processing_flow_not_found
+        pubmed_processing_flow_load_failure
+        extract_study_design_failure
+        abstract_design_type_excluded
+        abstract_primary_endpoint_excluded
+        abstract_trial_phase_excluded
+    }
+
+    AgentState --> PubMedArticleModel : pubmed_article
+    AgentState --> DeterminationType : determination
+    AgentState --> DeterminationReason : determination_reason
+    AgentState --> StudyDesignModel : study_design
+    AgentState --> TotalEvidenceScore : initial_evidence_score

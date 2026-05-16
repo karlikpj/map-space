@@ -1,0 +1,51 @@
+classDiagram
+    class TelemetrySink {
+        <<interface>>
+        +start_genai_attempt(start: GenAIClientAttemptStart) object
+        +finish_genai_attempt(handle: object, end: GenAIClientAttemptEnd) None
+        +emit_execution_summary(summary: LLMExecutionSummary) None
+    }
+
+    class GenAIUsage {
+        +input_tokens: int?
+        +output_tokens: int?
+        +total_tokens: int?
+        +cache_creation_input_tokens: int?
+        +cache_read_input_tokens: int?
+        +raw_usage: Dict~string, JsonScalar~
+        +combine(usages: Iterable~GenAIUsage | None~) GenAIUsage?
+    }
+
+    class GenAIClientAttemptStart {
+        +operation_name: string
+        +provider_name: string
+        +request_model: string?
+        +output_type: string?
+        +server_address: string?
+        +server_port: int?
+        +correlation: Dict~string, JsonScalar~
+    }
+
+    class GenAIClientAttemptEnd {
+        +response_model: string?
+        +response_id: string?
+        +finish_reasons: List~string~
+        +usage: GenAIUsage?
+        +error_type: string?
+        +error_message: string?
+        +provider_attributes: Dict~string, JsonScalar~
+    }
+
+    class LLMExecutionSummary {
+        +attempt_count: int
+        +retry_count: int
+        +total_duration_seconds: float
+        +total_usage: GenAIUsage?
+    }
+
+    TelemetrySink --> GenAIClientAttemptStart : start_genai_attempt(start)
+    TelemetrySink --> GenAIClientAttemptEnd : finish_genai_attempt(end)
+    TelemetrySink --> LLMExecutionSummary : emit_execution_summary(summary)
+
+    GenAIClientAttemptEnd --> GenAIUsage : usage
+    LLMExecutionSummary --> GenAIUsage : total_usage

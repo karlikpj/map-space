@@ -94,6 +94,57 @@ select {
   line-height: 1.5;
 }
 
+.hud-copy code {
+  font-family: "SFMono-Regular", "Menlo", "Monaco", monospace;
+  font-size: 0.94em;
+  color: #173847;
+}
+
+.model-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.42rem;
+  margin-top: 1rem;
+}
+
+.model-label {
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #6a7d84;
+}
+
+.model-select {
+  appearance: none;
+  width: 100%;
+  border: 1px solid rgba(23, 48, 58, 0.14);
+  border-radius: 0.95rem;
+  padding: 0.74rem 0.9rem;
+  background: rgba(255, 255, 255, 0.72);
+  color: #17303a;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.model-select:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.hud-error {
+  margin: 0.8rem 0 0;
+  padding: 0.78rem 0.9rem;
+  border: 1px solid rgba(158, 69, 77, 0.28);
+  border-radius: 0.95rem;
+  background: rgba(255, 241, 241, 0.84);
+  color: #8d333e;
+  line-height: 1.45;
+}
+
+.hud-error[hidden] {
+  display: none;
+}
+
 .breadcrumbs {
   display: flex;
   flex-wrap: wrap;
