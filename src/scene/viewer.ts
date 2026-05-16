@@ -94,7 +94,11 @@ type ViewerUiState = {
 const XR_DIAGRAM_SCALE = 0.13;
 const XR_TABLE_DISTANCE = 2.25;
 const XR_TABLE_VERTICAL_OFFSET = -0.5;
-const XR_PANEL_LOCAL_OFFSET = new THREE.Vector3(-0.95, 0.56, 0.22);
+const XR_PANEL_LOCAL_OFFSET = new THREE.Vector3(0, -0.92, 0.58);
+const XR_PANEL_TILT = new THREE.Quaternion().setFromAxisAngle(
+  new THREE.Vector3(1, 0, 0),
+  THREE.MathUtils.degToRad(-35),
+);
 const XR_RAY_LENGTH = 6;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const FORWARD_AXIS = new THREE.Vector3(0, 0, 1);
@@ -920,14 +924,10 @@ export class SpatialViewer {
       return;
     }
 
-    const xrCamera = this.renderer.xr.getCamera();
-    const cameraPosition = new THREE.Vector3();
-    xrCamera.getWorldPosition(cameraPosition);
-
     const localOffset = XR_PANEL_LOCAL_OFFSET.clone().applyQuaternion(this.xrAnchorRotation);
     this.xrPanelWorldPosition.copy(this.xrAnchorWorldPosition).add(localOffset);
     this.vrPanel.root.position.copy(this.xrPanelWorldPosition);
-    this.vrPanel.root.lookAt(cameraPosition);
+    this.vrPanel.root.quaternion.copy(this.xrAnchorRotation).multiply(XR_PANEL_TILT);
   }
 
   private updateXRInteractionState(): void {

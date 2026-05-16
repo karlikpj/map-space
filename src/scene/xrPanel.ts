@@ -29,13 +29,13 @@ export interface VrPanelElements {
 }
 
 const PANEL_SIZE = {
-  width: 1.22,
-  height: 0.96,
+  width: 1.02,
+  height: 0.82,
 } as const;
 
 const BUTTON_SIZE = {
-  width: 0.36,
-  height: 0.13,
+  width: 0.31,
+  height: 0.115,
 } as const;
 
 function drawRoundedRect(
@@ -217,7 +217,7 @@ function createButton(action: VrPanelAction, x: number, label: string): VrButton
     new THREE.PlaneGeometry(BUTTON_SIZE.width, BUTTON_SIZE.height),
     material,
   );
-  mesh.position.set(x, -0.34, 0.02);
+  mesh.position.set(x, -0.285, 0.02);
   mesh.renderOrder = 41;
   mesh.userData.vrAction = action;
   drawButtonTexture(texture, label, false, false);
@@ -239,8 +239,8 @@ export function createVrPanel(): VrPanelElements {
   );
   panelMesh.renderOrder = 40;
 
-  const backButton = createButton("back", -0.24, "Back");
-  const resetButton = createButton("reset", 0.24, "Reset");
+  const backButton = createButton("back", -0.205, "Back");
+  const resetButton = createButton("reset", 0.205, "Reset");
 
   const root = new THREE.Group();
   root.visible = false;
