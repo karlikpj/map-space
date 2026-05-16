@@ -61,7 +61,7 @@ app.innerHTML = `
         files. Branch cards reveal the next layer, end cards inspect in the
         center, and a second click returns them. Drag to orbit, scroll to zoom,
         and use the breadcrumb trail to climb back up the model. In XR, use the
-        in-world panel to move between models.
+        in-world panel to move between models and switch themes.
       </p>
       <div class="model-picker">
         <label class="model-label" for="model-select">Model</label>
@@ -279,6 +279,9 @@ async function showModel(modelId: string): Promise<void> {
         },
         onNextModelRequest: () => {
           requestRelativeModel(1);
+        },
+        onThemeToggleRequest: () => {
+          applyTheme(currentTheme === "dark" ? "light" : "dark");
         },
       });
     }

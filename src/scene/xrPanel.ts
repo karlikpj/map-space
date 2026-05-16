@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-export type VrPanelAction = "previous-model" | "next-model" | "back" | "reset";
+export type VrPanelAction = "previous-model" | "theme-toggle" | "next-model" | "back" | "reset";
 
 export interface VrPanelState {
   selectionLabel: string;
@@ -8,6 +8,8 @@ export interface VrPanelState {
   subtitle: string;
   pathText: string;
   modelLabel: string;
+  themeButtonLabel: string;
+  isDarkTheme: boolean;
   previousModelDisabled: boolean;
   nextModelDisabled: boolean;
   backDisabled: boolean;
@@ -133,64 +135,74 @@ function drawPanelTexture(texture: THREE.CanvasTexture, state: VrPanelState): vo
     throw new Error("Unable to create VR panel context.");
   }
 
+  const isDarkTheme = state.isDarkTheme;
+  const backgroundFill = isDarkTheme ? "rgba(8, 15, 21, 0.96)" : "rgba(255, 251, 243, 0.95)";
+  const headerColor = isDarkTheme ? "#f0b56e" : "#8b5e2d";
+  const dividerColor = isDarkTheme ? "#f0b56e" : "#2f5c64";
+  const mutedLabelColor = isDarkTheme ? "#92acb7" : "#7b8f96";
+  const bodyColor = isDarkTheme ? "#edf6fb" : "#15343f";
+  const sectionColor = isDarkTheme ? "#d4e6ed" : "#2f5c64";
+  const supportingColor = isDarkTheme ? "#a9c1ca" : "#45616b";
+  const detailColor = isDarkTheme ? "#c3d9e0" : "#3a5660";
+
   context.clearRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "rgba(255, 251, 243, 0.95)";
+  context.fillStyle = backgroundFill;
   drawRoundedRect(context, 28, 28, canvas.width - 56, canvas.height - 56, 54);
   context.fill();
 
-  context.strokeStyle = "#2f5c64";
+  context.strokeStyle = dividerColor;
   context.lineWidth = 12;
   context.beginPath();
   context.moveTo(110, 122);
   context.lineTo(canvas.width - 110, 122);
   context.stroke();
 
-  context.fillStyle = "#8b5e2d";
+  context.fillStyle = headerColor;
   context.font = "700 28px Avenir Next, Trebuchet MS, sans-serif";
   context.fillText("SPATIAL DATA MODEL VIEWER", 110, 88);
 
-  context.fillStyle = "#7b8f96";
+  context.fillStyle = mutedLabelColor;
   context.font = "700 24px Avenir Next, Trebuchet MS, sans-serif";
   context.fillText("VR MODE", 110, 128);
 
-  context.fillStyle = "#7b8f96";
+  context.fillStyle = mutedLabelColor;
   context.font = "700 28px Avenir Next, Trebuchet MS, sans-serif";
   context.fillText(state.selectionLabel.toUpperCase(), 110, 206);
 
-  context.fillStyle = "#15343f";
+  context.fillStyle = bodyColor;
   context.font = "700 64px Avenir Next, Trebuchet MS, sans-serif";
   const titleLines = wrapText(context, state.title, 1100, 2);
   titleLines.forEach((line, index) => {
     context.fillText(line, 110, 286 + index * 70);
   });
 
-  context.fillStyle = "#2f5c64";
+  context.fillStyle = sectionColor;
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
   context.fillText("Loaded Model", 110, 548);
 
-  context.fillStyle = "#45616b";
+  context.fillStyle = supportingColor;
   context.font = "600 34px Avenir Next, Trebuchet MS, sans-serif";
   const modelLines = wrapText(context, state.modelLabel, 1100, 2);
   modelLines.forEach((line, index) => {
     context.fillText(line, 110, 598 + index * 40);
   });
 
-  context.fillStyle = "#2f5c64";
+  context.fillStyle = sectionColor;
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
   context.fillText("Current Path", 110, 712);
 
-  context.fillStyle = "#45616b";
+  context.fillStyle = supportingColor;
   context.font = "500 31px Avenir Next, Trebuchet MS, sans-serif";
   const pathLines = wrapText(context, state.pathText, 1100, 2);
   pathLines.forEach((line, index) => {
     context.fillText(line, 110, 762 + index * 38);
   });
 
-  context.fillStyle = "#2f5c64";
+  context.fillStyle = sectionColor;
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
   context.fillText("Details", 110, 864);
 
-  context.fillStyle = "#3a5660";
+  context.fillStyle = detailColor;
   context.font = "600 34px Avenir Next, Trebuchet MS, sans-serif";
   const subtitleLines = wrapText(context, state.subtitle, 1100, 3);
   subtitleLines.forEach((line, index) => {
@@ -205,6 +217,7 @@ function drawButtonTexture(
   label: string,
   hovered: boolean,
   disabled: boolean,
+  isDarkTheme: boolean,
 ): void {
   const canvas = texture.image as HTMLCanvasElement;
   const context = canvas.getContext("2d");
@@ -215,17 +228,23 @@ function drawButtonTexture(
   context.clearRect(0, 0, canvas.width, canvas.height);
 
   if (disabled) {
-    context.fillStyle = "rgba(35, 63, 72, 0.22)";
+    context.fillStyle = isDarkTheme ? "rgba(225, 237, 242, 0.12)" : "rgba(35, 63, 72, 0.22)";
   } else if (hovered) {
-    context.fillStyle = "#b05f1b";
+    context.fillStyle = isDarkTheme ? "#f0b56e" : "#b05f1b";
   } else {
-    context.fillStyle = "#1d4550";
+    context.fillStyle = isDarkTheme ? "#18303b" : "#1d4550";
   }
 
   drawRoundedRect(context, 12, 12, canvas.width - 24, canvas.height - 24, 34);
   context.fill();
 
-  context.fillStyle = disabled ? "rgba(247, 251, 251, 0.6)" : "#f7fbfb";
+  if (disabled) {
+    context.fillStyle = isDarkTheme ? "rgba(232, 241, 245, 0.6)" : "rgba(247, 251, 251, 0.6)";
+  } else if (hovered && isDarkTheme) {
+    context.fillStyle = "#14242e";
+  } else {
+    context.fillStyle = "#f7fbfb";
+  }
   context.font = "700 62px Avenir Next, Trebuchet MS, sans-serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
@@ -247,7 +266,7 @@ function createButton(action: VrPanelAction, x: number, y: number, label: string
   mesh.renderOrder = 41;
   mesh.castShadow = true;
   mesh.userData.vrAction = action;
-  drawButtonTexture(texture, label, false, false);
+  drawButtonTexture(texture, label, false, false, false);
 
   return {
     mesh,
@@ -275,8 +294,9 @@ export function createVrPanel(): VrPanelElements {
   panelMesh.renderOrder = 40;
   panelMesh.castShadow = true;
 
-  const previousModelButton = createButton("previous-model", -0.18, 0.12, "Prev Model");
-  const nextModelButton = createButton("next-model", 0.18, 0.12, "Next Model");
+  const previousModelButton = createButton("previous-model", -0.28, 0.12, "Prev Model");
+  const themeButton = createButton("theme-toggle", 0, 0.12, "Dark Mode");
+  const nextModelButton = createButton("next-model", 0.28, 0.12, "Next Model");
   const backButton = createButton("back", -0.18, -0.36, "Back");
   const resetButton = createButton("reset", 0.18, -0.36, "Reset");
 
@@ -285,6 +305,7 @@ export function createVrPanel(): VrPanelElements {
   root.add(shadowMesh);
   root.add(panelMesh);
   root.add(previousModelButton.mesh);
+  root.add(themeButton.mesh);
   root.add(nextModelButton.mesh);
   root.add(backButton.mesh);
   root.add(resetButton.mesh);
@@ -299,12 +320,14 @@ export function createVrPanel(): VrPanelElements {
       panelMaterial,
       buttons: {
         "previous-model": previousModelButton,
+        "theme-toggle": themeButton,
         "next-model": nextModelButton,
         back: backButton,
         reset: resetButton,
       },
       interactiveObjects: [
         previousModelButton.mesh,
+        themeButton.mesh,
         nextModelButton.mesh,
         backButton.mesh,
         resetButton.mesh,
@@ -316,6 +339,8 @@ export function createVrPanel(): VrPanelElements {
       subtitle: "No extra metadata for this node.",
       pathText: "Study Design Model",
       modelLabel: "Study Design Model",
+      themeButtonLabel: "Dark Mode",
+      isDarkTheme: false,
       previousModelDisabled: true,
       nextModelDisabled: false,
       backDisabled: true,
@@ -333,12 +358,14 @@ export function createVrPanel(): VrPanelElements {
     panelMaterial,
     buttons: {
       "previous-model": previousModelButton,
+      "theme-toggle": themeButton,
       "next-model": nextModelButton,
       back: backButton,
       reset: resetButton,
     },
     interactiveObjects: [
       previousModelButton.mesh,
+      themeButton.mesh,
       nextModelButton.mesh,
       backButton.mesh,
       resetButton.mesh,
@@ -353,23 +380,34 @@ export function updateVrPanel(panel: VrPanelElements, state: VrPanelState): void
     "Prev Model",
     state.hoveredAction === "previous-model",
     state.previousModelDisabled,
+    state.isDarkTheme,
+  );
+  drawButtonTexture(
+    panel.buttons["theme-toggle"].texture,
+    state.themeButtonLabel,
+    state.hoveredAction === "theme-toggle",
+    false,
+    state.isDarkTheme,
   );
   drawButtonTexture(
     panel.buttons["next-model"].texture,
     "Next Model",
     state.hoveredAction === "next-model",
     state.nextModelDisabled,
+    state.isDarkTheme,
   );
   drawButtonTexture(
     panel.buttons.back.texture,
     "Back",
     state.hoveredAction === "back",
     state.backDisabled,
+    state.isDarkTheme,
   );
   drawButtonTexture(
     panel.buttons.reset.texture,
     "Reset",
     state.hoveredAction === "reset",
     state.resetDisabled,
+    state.isDarkTheme,
   );
 }

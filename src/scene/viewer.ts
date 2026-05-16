@@ -33,6 +33,7 @@ type ViewerOptions = {
   canGoToNextModel: boolean;
   onPreviousModelRequest: () => void;
   onNextModelRequest: () => void;
+  onThemeToggleRequest: () => void;
   theme: ViewerTheme;
 };
 
@@ -97,6 +98,8 @@ type ViewerUiState = {
   selectedSubtitle: string;
   pathText: string;
   modelLabel: string;
+  themeButtonLabel: string;
+  isDarkTheme: boolean;
   previousModelDisabled: boolean;
   nextModelDisabled: boolean;
   backDisabled: boolean;
@@ -127,6 +130,7 @@ export class SpatialViewer {
   private readonly xrButtonMountEl: HTMLDivElement;
   private readonly onPreviousModelRequest: () => void;
   private readonly onNextModelRequest: () => void;
+  private readonly onThemeToggleRequest: () => void;
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(44, 1, 0.1, 60);
   private readonly renderer = new THREE.WebGLRenderer({
@@ -207,6 +211,7 @@ export class SpatialViewer {
     this.xrButtonMountEl = options.xrButtonMountEl;
     this.onPreviousModelRequest = options.onPreviousModelRequest;
     this.onNextModelRequest = options.onNextModelRequest;
+    this.onThemeToggleRequest = options.onThemeToggleRequest;
     this.modelLabel = options.modelLabel;
     this.canGoToPreviousModel = options.canGoToPreviousModel;
     this.canGoToNextModel = options.canGoToNextModel;
@@ -297,6 +302,9 @@ export class SpatialViewer {
 
     this.theme = theme;
     this.applyTheme();
+    if (this.nodes.length > 0) {
+      this.renderVrPanel();
+    }
   }
 
   setData(
@@ -431,10 +439,10 @@ export class SpatialViewer {
       const flashlight = new THREE.SpotLight(
         "#fff0c7",
         0,
-        18,
-        THREE.MathUtils.degToRad(16),
-        0.9,
-        1.3,
+        22,
+        THREE.MathUtils.degToRad(17),
+        0.94,
+        1.5,
       );
       flashlight.position.set(0, 0, 0);
       flashlight.visible = false;
@@ -465,14 +473,19 @@ export class SpatialViewer {
     this.fillLight.position.set(-5, 5, 3);
 
     this.overheadDarkLight.castShadow = true;
-    this.overheadDarkLight.shadow.mapSize.set(1024, 1024);
+    this.overheadDarkLight.shadow.mapSize.set(1536, 1536);
     this.overheadDarkLight.shadow.bias = -0.00012;
     this.overheadDarkLight.shadow.normalBias = 0.02;
+    this.overheadDarkLight.shadow.radius = 5;
     this.overheadDarkLight.visible = false;
     this.scene.add(this.overheadDarkLight.target);
 
     this.desktopFlashlight.visible = false;
     this.desktopFlashlight.castShadow = false;
+    this.desktopFlashlight.distance = 30;
+    this.desktopFlashlight.angle = THREE.MathUtils.degToRad(17);
+    this.desktopFlashlight.penumbra = 0.96;
+    this.desktopFlashlight.decay = 1.45;
     this.scene.add(this.desktopFlashlight.target);
 
     this.floor.rotation.x = -Math.PI / 2;
@@ -588,35 +601,40 @@ export class SpatialViewer {
 
   private applyTheme(): void {
     const isDark = this.theme === "dark";
+    const isVrDark = isDark && this.isXRPresenting;
 
-    this.scene.background = new THREE.Color(isDark ? "#081017" : "#e9f0eb");
-    this.sceneFog.color.set(isDark ? "#081017" : "#e9f0eb");
-    this.sceneFog.near = isDark ? 9 : 12;
-    this.sceneFog.far = isDark ? 24 : 28;
+    this.scene.background = new THREE.Color(isVrDark ? "#03070c" : isDark ? "#081017" : "#e9f0eb");
+    this.sceneFog.color.set(isVrDark ? "#03070c" : isDark ? "#081017" : "#e9f0eb");
+    this.sceneFog.near = isVrDark ? 7.5 : isDark ? 9 : 12;
+    this.sceneFog.far = isVrDark ? 18 : isDark ? 24 : 28;
 
     this.hemisphereLight.color.set(isDark ? "#8a9dbb" : "#fff9f0");
     this.hemisphereLight.groundColor.set(isDark ? "#05090d" : "#b7c7c2");
-    this.hemisphereLight.intensity = isDark ? 0.24 : 1.6;
+    this.hemisphereLight.intensity = isVrDark ? 0.08 : isDark ? 0.22 : 1.6;
 
     this.keyLight.color.set(isDark ? "#6a7b90" : "#fff4d6");
-    this.keyLight.intensity = isDark ? 0.34 : 1.15;
+    this.keyLight.intensity = isVrDark ? 0.1 : isDark ? 0.3 : 1.15;
 
     this.fillLight.color.set(isDark ? "#4b6070" : "#d9eef2");
-    this.fillLight.intensity = isDark ? 0.24 : 0.9;
+    this.fillLight.intensity = isVrDark ? 0.05 : isDark ? 0.18 : 0.9;
 
-    this.floorMaterial.color.set(isDark ? "#111b24" : "#dbe7e1");
-    this.floorMaterial.opacity = isDark ? 0.82 : 0.72;
+    this.floorMaterial.color.set(isVrDark ? "#091018" : isDark ? "#111b24" : "#dbe7e1");
+    this.floorMaterial.opacity = isVrDark ? 0.9 : isDark ? 0.82 : 0.72;
 
     this.overheadDarkLight.visible = isDark;
-    this.overheadDarkLight.intensity = isDark ? 1.3 : 0;
+    this.overheadDarkLight.intensity = isVrDark ? 1.08 : isDark ? 1.22 : 0;
+    this.overheadDarkLight.distance = isVrDark ? 24 : 30;
+    this.overheadDarkLight.angle = THREE.MathUtils.degToRad(isVrDark ? 42 : 46);
+    this.overheadDarkLight.penumbra = 0.94;
+    this.overheadDarkLight.decay = isVrDark ? 1.55 : 1.4;
     this.renderer.shadowMap.enabled = isDark;
 
     this.desktopFlashlight.visible = isDark && !this.isXRPresenting;
-    this.desktopFlashlight.intensity = isDark && !this.isXRPresenting ? 0.52 : 0;
+    this.desktopFlashlight.intensity = isDark && !this.isXRPresenting ? 0.95 : 0;
 
     this.vrPanel.shadowMesh.visible = isDark;
-    this.vrPanel.shadowMaterial.color.set(isDark ? "#101a23" : "#fff7ec");
-    this.vrPanel.shadowMaterial.opacity = isDark ? 0.64 : 0.74;
+    this.vrPanel.shadowMaterial.color.set(isVrDark ? "#071017" : isDark ? "#101a23" : "#fff7ec");
+    this.vrPanel.shadowMaterial.opacity = isVrDark ? 0.82 : isDark ? 0.64 : 0.74;
 
     this.updateControllerFlashlights();
   }
@@ -636,7 +654,11 @@ export class SpatialViewer {
         this.isXRPresenting &&
         controllerState.controller.userData.xrConnected === true;
       controllerState.flashlight.visible = visible;
-      controllerState.flashlight.intensity = visible ? 0.58 : 0;
+      controllerState.flashlight.intensity = visible ? 0.98 : 0;
+      controllerState.flashlight.distance = 22;
+      controllerState.flashlight.angle = THREE.MathUtils.degToRad(18);
+      controllerState.flashlight.penumbra = 0.96;
+      controllerState.flashlight.decay = 1.55;
     }
   }
 
@@ -649,7 +671,7 @@ export class SpatialViewer {
     this.focusWorldPosition.copy(this.currentFocusLocalPosition);
     this.presentationRoot.localToWorld(this.focusWorldPosition);
 
-    this.tempVector.set(1.6, 8.6, 6.2).applyQuaternion(this.presentationRoot.quaternion);
+    this.tempVector.set(0.95, 5.7, 3.1).applyQuaternion(this.presentationRoot.quaternion);
     this.overheadDarkLight.position.copy(this.focusWorldPosition).add(this.tempVector);
     this.overheadDarkLight.target.position.copy(this.focusWorldPosition);
     this.overheadDarkLight.target.updateMatrixWorld();
@@ -826,6 +848,12 @@ export class SpatialViewer {
         this.xrHoveredAction = null;
         this.onNextModelRequest();
       }
+      return;
+    }
+
+    if (action === "theme-toggle") {
+      this.xrHoveredAction = null;
+      this.onThemeToggleRequest();
       return;
     }
 
@@ -1078,6 +1106,8 @@ export class SpatialViewer {
       subtitle: state.selectedSubtitle,
       pathText: state.pathText,
       modelLabel: state.modelLabel,
+      themeButtonLabel: state.themeButtonLabel,
+      isDarkTheme: state.isDarkTheme,
       previousModelDisabled: state.previousModelDisabled,
       nextModelDisabled: state.nextModelDisabled,
       backDisabled: state.backDisabled,
@@ -1100,6 +1130,8 @@ export class SpatialViewer {
       selectedSubtitle: this.selectedNode.data.subtitle ?? "No extra metadata for this node.",
       pathText: focusPath.map((node) => node.data.title).join(" / "),
       modelLabel: this.modelLabel,
+      themeButtonLabel: this.theme === "dark" ? "Light Mode" : "Dark Mode",
+      isDarkTheme: this.theme === "dark",
       previousModelDisabled: !this.canGoToPreviousModel,
       nextModelDisabled: !this.canGoToNextModel,
       backDisabled: this.inspectedLeafNode === null && this.focusNode.parent === null,
@@ -1117,6 +1149,10 @@ export class SpatialViewer {
 
     if (action === "next-model") {
       return this.canGoToNextModel;
+    }
+
+    if (action === "theme-toggle") {
+      return true;
     }
 
     if (action === "back") {
