@@ -100,6 +100,8 @@ function createLabelTexture(node: DiagramNode, palette: PaletteEntry): THREE.Can
   const canvas = document.createElement("canvas");
   canvas.width = 1120;
   canvas.height = 600;
+  const textInsetX = 82;
+  const textMaxWidth = 956;
 
   const context = canvas.getContext("2d");
   if (!context) {
@@ -119,26 +121,26 @@ function createLabelTexture(node: DiagramNode, palette: PaletteEntry): THREE.Can
   context.stroke();
 
   context.fillStyle = "#14303c";
-  context.font = "700 68px Avenir Next, Trebuchet MS, sans-serif";
-  const titleLines = wrapText(context, node.title, 860).slice(0, 2);
-  const titleStartY = 190;
-  const titleLineHeight = 74;
+  context.font = "700 84px Avenir Next, Trebuchet MS, sans-serif";
+  const titleLines = wrapText(context, node.title, textMaxWidth).slice(0, 2);
+  const titleStartY = 202;
+  const titleLineHeight = 88;
 
   titleLines.forEach((line, index) => {
-    context.fillText(line, 90, titleStartY + index * titleLineHeight);
+    context.fillText(line, textInsetX, titleStartY + index * titleLineHeight);
   });
 
   if (node.subtitle) {
     context.fillStyle = "#355560";
-    context.font = "600 40px Avenir Next, Trebuchet MS, sans-serif";
-    const subtitleLines = wrapText(context, node.subtitle, 860).slice(0, 2);
+    context.font = "600 80px Avenir Next, Trebuchet MS, sans-serif";
+    const subtitleLines = wrapText(context, node.subtitle, textMaxWidth).slice(0, 2);
     const subtitleStartY = Math.min(
-      470,
-      titleStartY + titleLines.length * titleLineHeight + 86,
+      486,
+      titleStartY + titleLines.length * titleLineHeight + 70,
     );
 
     subtitleLines.forEach((line, index) => {
-      context.fillText(line, 90, subtitleStartY + index * 46);
+      context.fillText(line, textInsetX, subtitleStartY + index * 82);
     });
   }
 

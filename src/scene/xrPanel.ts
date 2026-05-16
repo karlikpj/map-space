@@ -33,7 +33,7 @@ export interface VrPanelElements {
 
 const PANEL_SIZE = {
   width: 1.02,
-  height: 1.08,
+  height: 0.96,
 } as const;
 
 const BUTTON_SIZE = {
@@ -134,55 +134,55 @@ function drawPanelTexture(texture: THREE.CanvasTexture, state: VrPanelState): vo
   context.stroke();
 
   context.fillStyle = "#8b5e2d";
-  context.font = "700 40px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("SPATIAL DATA MODEL VIEWER", 110, 98);
+  context.font = "700 28px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("SPATIAL DATA MODEL VIEWER", 110, 88);
 
   context.fillStyle = "#7b8f96";
-  context.font = "700 48px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("VR MODE", 110, 162);
+  context.font = "700 24px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("VR MODE", 110, 128);
 
   context.fillStyle = "#7b8f96";
-  context.font = "700 48px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText(state.selectionLabel.toUpperCase(), 110, 244);
+  context.font = "700 28px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText(state.selectionLabel.toUpperCase(), 110, 206);
 
   context.fillStyle = "#15343f";
-  context.font = "700 78px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "700 64px Avenir Next, Trebuchet MS, sans-serif";
   const titleLines = wrapText(context, state.title, 1100, 2);
   titleLines.forEach((line, index) => {
-    context.fillText(line, 110, 352 + index * 82);
+    context.fillText(line, 110, 286 + index * 70);
   });
 
   context.fillStyle = "#2f5c64";
-  context.font = "700 52px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Loaded Model", 110, 650);
+  context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("Loaded Model", 110, 548);
 
   context.fillStyle = "#45616b";
-  context.font = "600 42px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "600 34px Avenir Next, Trebuchet MS, sans-serif";
   const modelLines = wrapText(context, state.modelLabel, 1100, 2);
   modelLines.forEach((line, index) => {
-    context.fillText(line, 110, 708 + index * 48);
+    context.fillText(line, 110, 598 + index * 40);
   });
 
   context.fillStyle = "#2f5c64";
-  context.font = "700 52px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Current Path", 110, 876);
+  context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("Current Path", 110, 712);
 
   context.fillStyle = "#45616b";
-  context.font = "500 40px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "500 31px Avenir Next, Trebuchet MS, sans-serif";
   const pathLines = wrapText(context, state.pathText, 1100, 2);
   pathLines.forEach((line, index) => {
-    context.fillText(line, 110, 934 + index * 46);
+    context.fillText(line, 110, 762 + index * 38);
   });
 
   context.fillStyle = "#2f5c64";
-  context.font = "700 52px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Details", 110, 1092);
+  context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("Details", 110, 864);
 
   context.fillStyle = "#3a5660";
-  context.font = "600 42px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "600 34px Avenir Next, Trebuchet MS, sans-serif";
   const subtitleLines = wrapText(context, state.subtitle, 1100, 3);
   subtitleLines.forEach((line, index) => {
-    context.fillText(line, 110, 1150 + index * 48);
+    context.fillText(line, 110, 914 + index * 42);
   });
 
   texture.needsUpdate = true;
@@ -214,7 +214,7 @@ function drawButtonTexture(
   context.fill();
 
   context.fillStyle = disabled ? "rgba(247, 251, 251, 0.6)" : "#f7fbfb";
-  context.font = "700 68px Avenir Next, Trebuchet MS, sans-serif";
+  context.font = "700 62px Avenir Next, Trebuchet MS, sans-serif";
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.fillText(label, canvas.width * 0.5, canvas.height * 0.5 + 4);
@@ -245,7 +245,7 @@ function createButton(action: VrPanelAction, x: number, y: number, label: string
 }
 
 export function createVrPanel(): VrPanelElements {
-  const panelTexture = createTexture(1400, 1480);
+  const panelTexture = createTexture(1400, 1220);
   const panelMaterial = createPanelMaterial(panelTexture);
   const panelMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(PANEL_SIZE.width, PANEL_SIZE.height),
