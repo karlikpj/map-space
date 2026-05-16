@@ -1,12 +1,15 @@
 import * as THREE from "three";
 
-export type VrPanelAction = "back" | "reset";
+export type VrPanelAction = "previous-model" | "next-model" | "back" | "reset";
 
 export interface VrPanelState {
   selectionLabel: string;
   title: string;
   subtitle: string;
   pathText: string;
+  modelLabel: string;
+  previousModelDisabled: boolean;
+  nextModelDisabled: boolean;
   backDisabled: boolean;
   resetDisabled: boolean;
   hoveredAction: VrPanelAction | null;
@@ -30,7 +33,7 @@ export interface VrPanelElements {
 
 const PANEL_SIZE = {
   width: 1.02,
-  height: 0.82,
+  height: 0.96,
 } as const;
 
 const BUTTON_SIZE = {
@@ -151,24 +154,35 @@ function drawPanelTexture(texture: THREE.CanvasTexture, state: VrPanelState): vo
 
   context.fillStyle = "#2f5c64";
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Current Path", 110, 478);
+  context.fillText("Loaded Model", 110, 442);
+
+  context.fillStyle = "#45616b";
+  context.font = "600 38px Avenir Next, Trebuchet MS, sans-serif";
+  const modelLines = wrapText(context, state.modelLabel, 1100, 2);
+  modelLines.forEach((line, index) => {
+    context.fillText(line, 110, 498 + index * 44);
+  });
+
+  context.fillStyle = "#2f5c64";
+  context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
+  context.fillText("Current Path", 110, 622);
 
   context.fillStyle = "#45616b";
   context.font = "500 34px Avenir Next, Trebuchet MS, sans-serif";
   const pathLines = wrapText(context, state.pathText, 1100, 2);
   pathLines.forEach((line, index) => {
-    context.fillText(line, 110, 534 + index * 42);
+    context.fillText(line, 110, 678 + index * 42);
   });
 
   context.fillStyle = "#2f5c64";
   context.font = "700 30px Avenir Next, Trebuchet MS, sans-serif";
-  context.fillText("Details", 110, 662);
+  context.fillText("Details", 110, 804);
 
   context.fillStyle = "#3a5660";
   context.font = "600 38px Avenir Next, Trebuchet MS, sans-serif";
   const subtitleLines = wrapText(context, state.subtitle, 1100, 3);
   subtitleLines.forEach((line, index) => {
-    context.fillText(line, 110, 718 + index * 46);
+    context.fillText(line, 110, 860 + index * 46);
   });
 
   texture.needsUpdate = true;
@@ -210,14 +224,14 @@ function drawButtonTexture(
   texture.needsUpdate = true;
 }
 
-function createButton(action: VrPanelAction, x: number, label: string): VrButtonVisual {
+function createButton(action: VrPanelAction, x: number, y: number, label: string): VrButtonVisual {
   const texture = createTexture(640, 220);
   const material = createPanelMaterial(texture);
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(BUTTON_SIZE.width, BUTTON_SIZE.height),
     material,
   );
-  mesh.position.set(x, -0.285, 0.02);
+  mesh.position.set(x, y, 0.02);
   mesh.renderOrder = 41;
   mesh.userData.vrAction = action;
   drawButtonTexture(texture, label, false, false);
@@ -231,7 +245,7 @@ function createButton(action: VrPanelAction, x: number, label: string): VrButton
 }
 
 export function createVrPanel(): VrPanelElements {
-  const panelTexture = createTexture(1400, 1024);
+  const panelTexture = createTexture(1400, 1220);
   const panelMaterial = createPanelMaterial(panelTexture);
   const panelMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(PANEL_SIZE.width, PANEL_SIZE.height),
@@ -239,12 +253,16 @@ export function createVrPanel(): VrPanelElements {
   );
   panelMesh.renderOrder = 40;
 
-  const backButton = createButton("back", -0.205, "Back");
-  const resetButton = createButton("reset", 0.205, "Reset");
+  const previousModelButton = createButton("previous-model", -0.205, -0.22, "Prev Model");
+  const nextModelButton = createButton("next-model", 0.205, -0.22, "Next Model");
+  const backButton = createButton("back", -0.205, -0.36, "Back");
+  const resetButton = createButton("reset", 0.205, -0.36, "Reset");
 
   const root = new THREE.Group();
   root.visible = false;
   root.add(panelMesh);
+  root.add(previousModelButton.mesh);
+  root.add(nextModelButton.mesh);
   root.add(backButton.mesh);
   root.add(resetButton.mesh);
 
@@ -255,16 +273,26 @@ export function createVrPanel(): VrPanelElements {
       panelTexture,
       panelMaterial,
       buttons: {
+        "previous-model": previousModelButton,
+        "next-model": nextModelButton,
         back: backButton,
         reset: resetButton,
       },
-      interactiveObjects: [backButton.mesh, resetButton.mesh],
+      interactiveObjects: [
+        previousModelButton.mesh,
+        nextModelButton.mesh,
+        backButton.mesh,
+        resetButton.mesh,
+      ],
     },
     {
       selectionLabel: "Expanded node",
       title: "Study Design Model",
       subtitle: "No extra metadata for this node.",
       pathText: "Study Design Model",
+      modelLabel: "Study Design Model",
+      previousModelDisabled: true,
+      nextModelDisabled: false,
       backDisabled: true,
       resetDisabled: true,
       hoveredAction: null,
@@ -277,15 +305,34 @@ export function createVrPanel(): VrPanelElements {
     panelTexture,
     panelMaterial,
     buttons: {
+      "previous-model": previousModelButton,
+      "next-model": nextModelButton,
       back: backButton,
       reset: resetButton,
     },
-    interactiveObjects: [backButton.mesh, resetButton.mesh],
+    interactiveObjects: [
+      previousModelButton.mesh,
+      nextModelButton.mesh,
+      backButton.mesh,
+      resetButton.mesh,
+    ],
   };
 }
 
 export function updateVrPanel(panel: VrPanelElements, state: VrPanelState): void {
   drawPanelTexture(panel.panelTexture, state);
+  drawButtonTexture(
+    panel.buttons["previous-model"].texture,
+    "Prev Model",
+    state.hoveredAction === "previous-model",
+    state.previousModelDisabled,
+  );
+  drawButtonTexture(
+    panel.buttons["next-model"].texture,
+    "Next Model",
+    state.hoveredAction === "next-model",
+    state.nextModelDisabled,
+  );
   drawButtonTexture(
     panel.buttons.back.texture,
     "Back",

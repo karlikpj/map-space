@@ -17,7 +17,8 @@ app.innerHTML = `
         Pick a Mermaid class diagram from the bundled <code>src/models/</code>
         files. Branch cards reveal the next layer, end cards inspect in the
         center, and a second click returns them. Drag to orbit, scroll to zoom,
-        and use the breadcrumb trail to climb back up the model.
+        and use the breadcrumb trail to climb back up the model. In XR, use the
+        in-world panel to move between models.
       </p>
       <div class="model-picker">
         <label class="model-label" for="model-select">Model</label>
@@ -98,6 +99,56 @@ function disposeViewer(): void {
   activeViewer = null;
 }
 
+function getModelIndex(modelId: string): number {
+  return modelSources.findIndex((source) => source.id === modelId);
+}
+
+function getViewerModelState(modelId: string): {
+  modelLabel: string;
+  canGoToPreviousModel: boolean;
+  canGoToNextModel: boolean;
+} {
+  const modelIndex = getModelIndex(modelId);
+  const source = modelSources[modelIndex];
+  if (!source) {
+    return {
+      modelLabel: "Unknown model",
+      canGoToPreviousModel: false,
+      canGoToNextModel: false,
+    };
+  }
+
+  return {
+    modelLabel: source.label,
+    canGoToPreviousModel: modelIndex > 0,
+    canGoToNextModel: modelIndex >= 0 && modelIndex < modelSources.length - 1,
+  };
+}
+
+function requestRelativeModel(offset: -1 | 1): void {
+  if (modelSelectEl.disabled) {
+    return;
+  }
+
+  const currentModelId = activeModelId ?? lastGoodModelId;
+  if (!currentModelId) {
+    return;
+  }
+
+  const currentIndex = getModelIndex(currentModelId);
+  if (currentIndex < 0) {
+    return;
+  }
+
+  const nextSource = modelSources[currentIndex + offset];
+  if (!nextSource) {
+    return;
+  }
+
+  modelSelectEl.value = nextSource.id;
+  void showModel(nextSource.id);
+}
+
 function populateModelOptions(): void {
   modelSelectEl.replaceChildren();
 
@@ -142,17 +193,28 @@ async function showModel(modelId: string): Promise<void> {
       return;
     }
 
-    disposeViewer();
-    activeViewer = new SpatialViewer({
-      container: sceneRootEl,
-      hudEl,
-      breadcrumbEl: breadcrumbsEl,
-      detailsEl,
-      backButton: backButtonEl,
-      resetButton: resetButtonEl,
-      xrButtonMountEl: xrButtonSlotEl,
-      data: result.model,
-    });
+    const viewerModelState = getViewerModelState(source.id);
+    if (activeViewer) {
+      activeViewer.setData(result.model, viewerModelState);
+    } else {
+      activeViewer = new SpatialViewer({
+        container: sceneRootEl,
+        hudEl,
+        breadcrumbEl: breadcrumbsEl,
+        detailsEl,
+        backButton: backButtonEl,
+        resetButton: resetButtonEl,
+        xrButtonMountEl: xrButtonSlotEl,
+        data: result.model,
+        ...viewerModelState,
+        onPreviousModelRequest: () => {
+          requestRelativeModel(-1);
+        },
+        onNextModelRequest: () => {
+          requestRelativeModel(1);
+        },
+      });
+    }
     activeModelId = source.id;
     lastGoodModelId = source.id;
     modelSelectEl.value = source.id;
