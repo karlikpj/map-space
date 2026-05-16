@@ -471,13 +471,8 @@ function buildDiagramTree(source: ModelSource, parsed: ParsedDiagram): DiagramNo
 
     for (const member of parsedClass.members) {
       const isRepresentedByStructuralChild = structuralRelations.some((relation) => {
-        if (relation.label && member.name === relation.label) {
-          return true;
-        }
-
-        return (
-          member.referencedClassKey !== undefined && relation.child === member.referencedClassKey
-        );
+        const childClass = parsed.classes.get(relation.child);
+        return structuralChildRepresentsMember(member, relation, childClass);
       });
 
       if (isRepresentedByStructuralChild) {
@@ -831,6 +826,57 @@ function extractMemberClassReference(
   }
 
   return undefined;
+}
+
+function structuralChildRepresentsMember(
+  member: ParsedMember,
+  relation: ParsedRelation,
+  childClass?: ParsedClass,
+): boolean {
+  if (namesMatch(member.name, relation.label)) {
+    return true;
+  }
+
+  if (member.referencedClassKey !== undefined) {
+    if (namesMatch(member.referencedClassKey, relation.child)) {
+      return true;
+    }
+
+    if (
+      namesMatch(
+        basenameFromQualifiedName(member.referencedClassKey),
+        basenameFromQualifiedName(relation.child),
+      )
+    ) {
+      return true;
+    }
+  }
+
+  if (!childClass) {
+    return false;
+  }
+
+  return (
+    namesMatch(member.name, getClassTitle(childClass)) ||
+    namesMatch(member.name, childClass.displayLabel) ||
+    namesMatch(member.name, basenameFromQualifiedName(childClass.rawName))
+  );
+}
+
+function namesMatch(left: string | undefined, right: string | undefined): boolean {
+  const normalizedLeft = normalizeComparableName(left);
+  if (!normalizedLeft) {
+    return false;
+  }
+
+  return normalizedLeft === normalizeComparableName(right);
+}
+
+function normalizeComparableName(value: string | undefined): string {
+  return (value ?? "")
+    .replace(/~.*$/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 function isScalarLikeType(typeName: string): boolean {
