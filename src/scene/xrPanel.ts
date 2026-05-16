@@ -24,6 +24,8 @@ type VrButtonVisual = {
 
 export interface VrPanelElements {
   root: THREE.Group;
+  shadowMesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+  shadowMaterial: THREE.MeshStandardMaterial;
   panelMesh: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
   panelTexture: THREE.CanvasTexture;
   panelMaterial: THREE.MeshBasicMaterial;
@@ -111,6 +113,16 @@ function createPanelMaterial(texture: THREE.CanvasTexture): THREE.MeshBasicMater
     depthTest: false,
     depthWrite: false,
     toneMapped: false,
+  });
+}
+
+function createShadowMaterial(): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({
+    color: "#fff7ec",
+    transparent: true,
+    opacity: 0.74,
+    roughness: 0.94,
+    metalness: 0.02,
   });
 }
 
@@ -233,6 +245,7 @@ function createButton(action: VrPanelAction, x: number, y: number, label: string
   );
   mesh.position.set(x, y, 0.02);
   mesh.renderOrder = 41;
+  mesh.castShadow = true;
   mesh.userData.vrAction = action;
   drawButtonTexture(texture, label, false, false);
 
@@ -247,11 +260,20 @@ function createButton(action: VrPanelAction, x: number, y: number, label: string
 export function createVrPanel(): VrPanelElements {
   const panelTexture = createTexture(1400, 1220);
   const panelMaterial = createPanelMaterial(panelTexture);
+  const shadowMaterial = createShadowMaterial();
+  const shadowMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(PANEL_SIZE.width * 1.02, PANEL_SIZE.height * 1.02),
+    shadowMaterial,
+  );
   const panelMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(PANEL_SIZE.width, PANEL_SIZE.height),
     panelMaterial,
   );
+  shadowMesh.position.z = -0.016;
+  shadowMesh.renderOrder = 39;
+  shadowMesh.receiveShadow = true;
   panelMesh.renderOrder = 40;
+  panelMesh.castShadow = true;
 
   const previousModelButton = createButton("previous-model", -0.18, 0.12, "Prev Model");
   const nextModelButton = createButton("next-model", 0.18, 0.12, "Next Model");
@@ -260,6 +282,7 @@ export function createVrPanel(): VrPanelElements {
 
   const root = new THREE.Group();
   root.visible = false;
+  root.add(shadowMesh);
   root.add(panelMesh);
   root.add(previousModelButton.mesh);
   root.add(nextModelButton.mesh);
@@ -269,6 +292,8 @@ export function createVrPanel(): VrPanelElements {
   updateVrPanel(
     {
       root,
+      shadowMesh,
+      shadowMaterial,
       panelMesh,
       panelTexture,
       panelMaterial,
@@ -301,6 +326,8 @@ export function createVrPanel(): VrPanelElements {
 
   return {
     root,
+    shadowMesh,
+    shadowMaterial,
     panelMesh,
     panelTexture,
     panelMaterial,

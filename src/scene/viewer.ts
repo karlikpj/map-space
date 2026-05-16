@@ -17,6 +17,8 @@ import {
   type VrPanelElements,
 } from "./xrPanel";
 
+export type ViewerTheme = "light" | "dark";
+
 type ViewerOptions = {
   container: HTMLDivElement;
   hudEl: HTMLElement;
@@ -31,6 +33,7 @@ type ViewerOptions = {
   canGoToNextModel: boolean;
   onPreviousModelRequest: () => void;
   onNextModelRequest: () => void;
+  theme: ViewerTheme;
 };
 
 type RuntimeNode = {
@@ -72,6 +75,7 @@ type XrControllerState = {
   controller: XrControllerObject;
   ray: THREE.Line<THREE.BufferGeometry, THREE.LineBasicMaterial>;
   rayMaterial: THREE.LineBasicMaterial;
+  flashlight: THREE.SpotLight;
 };
 
 type XrPickTarget =
@@ -129,9 +133,29 @@ export class SpatialViewer {
     antialias: true,
     alpha: true,
   });
+  private readonly hemisphereLight = new THREE.HemisphereLight("#fff9f0", "#b7c7c2", 1.6);
+  private readonly keyLight = new THREE.DirectionalLight("#fff4d6", 1.15);
+  private readonly fillLight = new THREE.DirectionalLight("#d9eef2", 0.9);
+  private readonly overheadDarkLight = new THREE.SpotLight(
+    "#d7e4ff",
+    0,
+    36,
+    THREE.MathUtils.degToRad(52),
+    0.84,
+    1.35,
+  );
+  private readonly desktopFlashlight = new THREE.SpotLight(
+    "#fff3d2",
+    0,
+    28,
+    THREE.MathUtils.degToRad(18),
+    0.92,
+    1.4,
+  );
   private readonly controls: OrbitControls;
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
+  private readonly desktopLightPointer = new THREE.Vector2();
   private readonly presentationRoot = new THREE.Group();
   private readonly sceneRoot = new THREE.Group();
   private readonly vrPanel: VrPanelElements = createVrPanel();
@@ -145,6 +169,18 @@ export class SpatialViewer {
   private readonly xrAnchorWorldPosition = new THREE.Vector3();
   private readonly xrAnchorRotation = new THREE.Quaternion();
   private readonly xrPanelWorldPosition = new THREE.Vector3();
+  private readonly sceneFog = new THREE.Fog("#e9f0eb", 12, 28);
+  private readonly floorMaterial = new THREE.MeshStandardMaterial({
+    color: "#dbe7e1",
+    transparent: true,
+    opacity: 0.72,
+    roughness: 1,
+  });
+  private readonly floor = new THREE.Mesh(new THREE.CircleGeometry(12, 64), this.floorMaterial);
+  private readonly focusWorldPosition = new THREE.Vector3();
+  private readonly lightPlane = new THREE.Plane();
+  private readonly tempVector = new THREE.Vector3();
+  private readonly tempVectorB = new THREE.Vector3();
 
   private lastFrameTime = 0;
   private disposed = false;
@@ -159,6 +195,7 @@ export class SpatialViewer {
   private modelLabel: string;
   private canGoToPreviousModel: boolean;
   private canGoToNextModel: boolean;
+  private theme: ViewerTheme;
 
   constructor(options: ViewerOptions) {
     this.container = options.container;
@@ -173,16 +210,19 @@ export class SpatialViewer {
     this.modelLabel = options.modelLabel;
     this.canGoToPreviousModel = options.canGoToPreviousModel;
     this.canGoToNextModel = options.canGoToNextModel;
+    this.theme = options.theme;
 
     this.renderer.domElement.className = "viewer-canvas";
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.shadowMap.enabled = false;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.xr.enabled = true;
     this.renderer.xr.setReferenceSpaceType("local-floor");
     this.container.append(this.renderer.domElement);
 
     this.scene.background = new THREE.Color("#e9f0eb");
-    this.scene.fog = new THREE.Fog("#e9f0eb", 12, 28);
+    this.scene.fog = this.sceneFog;
     this.scene.add(this.presentationRoot);
     this.presentationRoot.add(this.sceneRoot);
     this.scene.add(this.vrPanel.root);
@@ -201,6 +241,7 @@ export class SpatialViewer {
     this.setupScene();
     this.setupXRControllers();
     this.setupXRButton();
+    this.applyTheme();
 
     this.rootNode = this.buildRuntime(options.data, null, 0);
     this.focusNode = this.rootNode;
@@ -247,6 +288,15 @@ export class SpatialViewer {
     this.hoveredNode = null;
     this.xrHoveredAction = null;
     this.updateLayout();
+  }
+
+  setTheme(theme: ViewerTheme): void {
+    if (this.theme === theme) {
+      return;
+    }
+
+    this.theme = theme;
+    this.applyTheme();
   }
 
   setData(
@@ -305,11 +355,16 @@ export class SpatialViewer {
     this.vrPanel.panelMesh.geometry.dispose();
     this.vrPanel.panelMaterial.dispose();
     this.vrPanel.panelTexture.dispose();
+    this.vrPanel.shadowMesh.geometry.dispose();
+    this.vrPanel.shadowMaterial.dispose();
     Object.values(this.vrPanel.buttons).forEach((button) => {
       button.mesh.geometry.dispose();
       button.material.dispose();
       button.texture.dispose();
     });
+
+    this.floor.geometry.dispose();
+    this.floorMaterial.dispose();
 
     this.renderer.dispose();
     this.container.replaceChildren();
@@ -373,7 +428,21 @@ export class SpatialViewer {
       ray.name = `xr-ray-${index}`;
       ray.scale.z = XR_RAY_LENGTH;
       ray.visible = false;
+      const flashlight = new THREE.SpotLight(
+        "#fff0c7",
+        0,
+        18,
+        THREE.MathUtils.degToRad(16),
+        0.9,
+        1.3,
+      );
+      flashlight.position.set(0, 0, 0);
+      flashlight.visible = false;
+      flashlight.castShadow = false;
+      flashlight.target.position.set(0, 0, -2.8);
       controller.add(ray);
+      controller.add(flashlight);
+      controller.add(flashlight.target);
       controller.userData.xrRay = ray;
       controller.userData.xrIndex = index;
       controller.userData.xrConnected = false;
@@ -386,34 +455,36 @@ export class SpatialViewer {
         controller,
         ray,
         rayMaterial,
+        flashlight,
       });
     }
   }
 
   private setupScene(): void {
-    const hemisphere = new THREE.HemisphereLight("#fff9f0", "#b7c7c2", 1.6);
-    this.scene.add(hemisphere);
+    this.keyLight.position.set(5, 8, 7);
+    this.fillLight.position.set(-5, 5, 3);
 
-    const keyLight = new THREE.DirectionalLight("#fff4d6", 1.15);
-    keyLight.position.set(5, 8, 7);
-    this.scene.add(keyLight);
+    this.overheadDarkLight.castShadow = true;
+    this.overheadDarkLight.shadow.mapSize.set(1024, 1024);
+    this.overheadDarkLight.shadow.bias = -0.00012;
+    this.overheadDarkLight.shadow.normalBias = 0.02;
+    this.overheadDarkLight.visible = false;
+    this.scene.add(this.overheadDarkLight.target);
 
-    const fillLight = new THREE.DirectionalLight("#d9eef2", 0.9);
-    fillLight.position.set(-5, 5, 3);
-    this.scene.add(fillLight);
+    this.desktopFlashlight.visible = false;
+    this.desktopFlashlight.castShadow = false;
+    this.scene.add(this.desktopFlashlight.target);
 
-    const floor = new THREE.Mesh(
-      new THREE.CircleGeometry(12, 64),
-      new THREE.MeshStandardMaterial({
-        color: "#dbe7e1",
-        transparent: true,
-        opacity: 0.72,
-        roughness: 1,
-      }),
-    );
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -4.8;
-    this.scene.add(floor);
+    this.floor.rotation.x = -Math.PI / 2;
+    this.floor.position.y = -4.8;
+    this.floor.receiveShadow = true;
+
+    this.scene.add(this.hemisphereLight);
+    this.scene.add(this.keyLight);
+    this.scene.add(this.fillLight);
+    this.scene.add(this.overheadDarkLight);
+    this.scene.add(this.desktopFlashlight);
+    this.scene.add(this.floor);
   }
 
   private buildRuntime(
@@ -438,6 +509,8 @@ export class SpatialViewer {
 
     visual.group.position.copy(runtimeNode.targetPosition);
     visual.group.scale.setScalar(runtimeNode.targetScale);
+    visual.frame.castShadow = true;
+    visual.frame.receiveShadow = true;
     visual.frame.userData.runtimeNode = runtimeNode;
     visual.label.userData.runtimeNode = runtimeNode;
 
@@ -513,6 +586,92 @@ export class SpatialViewer {
     this.renderer.xr.addEventListener("sessionend", this.handleXRSessionEnd);
   }
 
+  private applyTheme(): void {
+    const isDark = this.theme === "dark";
+
+    this.scene.background = new THREE.Color(isDark ? "#081017" : "#e9f0eb");
+    this.sceneFog.color.set(isDark ? "#081017" : "#e9f0eb");
+    this.sceneFog.near = isDark ? 9 : 12;
+    this.sceneFog.far = isDark ? 24 : 28;
+
+    this.hemisphereLight.color.set(isDark ? "#8a9dbb" : "#fff9f0");
+    this.hemisphereLight.groundColor.set(isDark ? "#05090d" : "#b7c7c2");
+    this.hemisphereLight.intensity = isDark ? 0.24 : 1.6;
+
+    this.keyLight.color.set(isDark ? "#6a7b90" : "#fff4d6");
+    this.keyLight.intensity = isDark ? 0.34 : 1.15;
+
+    this.fillLight.color.set(isDark ? "#4b6070" : "#d9eef2");
+    this.fillLight.intensity = isDark ? 0.24 : 0.9;
+
+    this.floorMaterial.color.set(isDark ? "#111b24" : "#dbe7e1");
+    this.floorMaterial.opacity = isDark ? 0.82 : 0.72;
+
+    this.overheadDarkLight.visible = isDark;
+    this.overheadDarkLight.intensity = isDark ? 1.3 : 0;
+    this.renderer.shadowMap.enabled = isDark;
+
+    this.desktopFlashlight.visible = isDark && !this.isXRPresenting;
+    this.desktopFlashlight.intensity = isDark && !this.isXRPresenting ? 0.52 : 0;
+
+    this.vrPanel.shadowMesh.visible = isDark;
+    this.vrPanel.shadowMaterial.color.set(isDark ? "#101a23" : "#fff7ec");
+    this.vrPanel.shadowMaterial.opacity = isDark ? 0.64 : 0.74;
+
+    this.updateControllerFlashlights();
+  }
+
+  private updateDesktopPointer(event: PointerEvent): void {
+    const bounds = this.renderer.domElement.getBoundingClientRect();
+    this.desktopLightPointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+    this.desktopLightPointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+  }
+
+  private updateControllerFlashlights(): void {
+    const isDark = this.theme === "dark";
+
+    for (const controllerState of this.xrControllers) {
+      const visible =
+        isDark &&
+        this.isXRPresenting &&
+        controllerState.controller.userData.xrConnected === true;
+      controllerState.flashlight.visible = visible;
+      controllerState.flashlight.intensity = visible ? 0.58 : 0;
+    }
+  }
+
+  private updateDarkModeLighting(): void {
+    if (this.theme !== "dark") {
+      return;
+    }
+
+    this.presentationRoot.updateMatrixWorld(true);
+    this.focusWorldPosition.copy(this.currentFocusLocalPosition);
+    this.presentationRoot.localToWorld(this.focusWorldPosition);
+
+    this.tempVector.set(1.6, 8.6, 6.2).applyQuaternion(this.presentationRoot.quaternion);
+    this.overheadDarkLight.position.copy(this.focusWorldPosition).add(this.tempVector);
+    this.overheadDarkLight.target.position.copy(this.focusWorldPosition);
+    this.overheadDarkLight.target.updateMatrixWorld();
+
+    if (this.isXRPresenting) {
+      return;
+    }
+
+    this.camera.getWorldDirection(this.tempVector);
+    this.lightPlane.setFromNormalAndCoplanarPoint(this.tempVector, this.focusWorldPosition);
+    this.raycaster.setFromCamera(this.desktopLightPointer, this.camera);
+    if (!this.raycaster.ray.intersectPlane(this.lightPlane, this.tempVectorB)) {
+      this.tempVectorB.copy(this.focusWorldPosition);
+    }
+
+    this.camera.getWorldPosition(this.desktopFlashlight.position);
+    this.desktopFlashlight.position.y += 0.22;
+    this.desktopFlashlight.position.addScaledVector(this.tempVector, 0.42);
+    this.desktopFlashlight.target.position.copy(this.tempVectorB);
+    this.desktopFlashlight.target.updateMatrixWorld();
+  }
+
   private readonly handleResize = (): void => {
     const width = Math.max(this.container.clientWidth, 320);
     const height = Math.max(this.container.clientHeight, 320);
@@ -526,6 +685,7 @@ export class SpatialViewer {
       return;
     }
 
+    this.updateDesktopPointer(event);
     const hovered = this.pickNode(event);
     if (hovered === this.hoveredNode) {
       return;
@@ -541,6 +701,7 @@ export class SpatialViewer {
       return;
     }
 
+    this.desktopLightPointer.set(0, 0);
     this.hoveredNode = null;
     this.renderer.domElement.style.cursor = "grab";
     this.updateLayout();
@@ -567,6 +728,7 @@ export class SpatialViewer {
     this.controls.enabled = false;
     this.hudEl.hidden = true;
     this.vrPanel.root.visible = true;
+    this.applyTheme();
     this.updateLayout(true);
   };
 
@@ -588,6 +750,7 @@ export class SpatialViewer {
     }
 
     this.renderer.domElement.style.cursor = "grab";
+    this.applyTheme();
     this.updateLayout(true);
   };
 
@@ -617,6 +780,7 @@ export class SpatialViewer {
       controller.userData.xrConnected = true;
       ray.visible = true;
     }
+    this.updateControllerFlashlights();
   };
 
   private readonly handleXRControllerDisconnected = (event: Event): void => {
@@ -626,6 +790,7 @@ export class SpatialViewer {
       controller.userData.xrConnected = false;
       ray.visible = false;
     }
+    this.updateControllerFlashlights();
   };
 
   private activateNode(node: RuntimeNode): void {
@@ -1013,6 +1178,9 @@ export class SpatialViewer {
     if (!this.isXRPresenting) {
       this.controls.update();
     }
+
+    this.updateDarkModeLighting();
+    this.updateControllerFlashlights();
 
     this.renderer.render(this.scene, this.camera);
   };

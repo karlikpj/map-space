@@ -1,6 +1,37 @@
 import "./styles.css";
 import { getModelSources, loadModelSource } from "./data/mermaidModels";
-import { SpatialViewer } from "./scene/viewer";
+import { SpatialViewer, type ViewerTheme } from "./scene/viewer";
+
+const THEME_STORAGE_KEY = "spatial-mermaid-viewer-theme";
+
+function getThemeIcon(theme: ViewerTheme): string {
+  if (theme === "dark") {
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 4.25v2.5M12 17.25v2.5M4.25 12h2.5M17.25 12h2.5M6.52 6.52l1.77 1.77M15.71 15.71l1.77 1.77M17.48 6.52l-1.77 1.77M8.29 15.71l-1.77 1.77M12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8Z" />
+      </svg>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M14.75 3.5a8.75 8.75 0 1 0 5.75 15.35A9.5 9.5 0 0 1 14.75 3.5Z" />
+    </svg>
+  `;
+}
+
+function getInitialTheme(): ViewerTheme {
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (storedTheme === "light" || storedTheme === "dark") {
+      return storedTheme;
+    }
+  } catch {
+    // Ignore storage access failures and fall back to runtime detection.
+  }
+
+  return "light";
+}
 
 const app = document.querySelector<HTMLDivElement>("#app");
 
@@ -11,8 +42,20 @@ if (!app) {
 app.innerHTML = `
   <div class="app-shell">
     <section id="hud" class="hud" aria-label="Viewer controls">
-      <p class="eyebrow">Mermaid Class Diagram</p>
-      <h1>Spatial Mermaid Viewer</h1>
+      <div class="hud-head">
+        <div class="hud-title-block">
+          <p class="eyebrow">Mermaid Class Diagram</p>
+          <h1>Spatial Mermaid Viewer</h1>
+        </div>
+        <button
+          id="theme-toggle"
+          class="theme-toggle"
+          type="button"
+          aria-label="Enable dark mode"
+          aria-pressed="false"
+          title="Enable dark mode"
+        ></button>
+      </div>
       <p class="hud-copy">
         Pick a Mermaid class diagram from the bundled <code>src/models/</code>
         files. Branch cards reveal the next layer, end cards inspect in the
@@ -46,6 +89,7 @@ const hudError = document.querySelector<HTMLElement>("#hud-error");
 const backButton = document.querySelector<HTMLButtonElement>("#back-button");
 const resetButton = document.querySelector<HTMLButtonElement>("#reset-button");
 const xrButtonSlot = document.querySelector<HTMLDivElement>("#xr-button-slot");
+const themeToggle = document.querySelector<HTMLButtonElement>("#theme-toggle");
 
 if (
   !hud ||
@@ -56,7 +100,8 @@ if (
   !hudError ||
   !backButton ||
   !resetButton ||
-  !xrButtonSlot
+  !xrButtonSlot ||
+  !themeToggle
 ) {
   throw new Error("Viewer shell is missing required elements.");
 }
@@ -70,6 +115,7 @@ const hudErrorEl = hudError;
 const backButtonEl = backButton;
 const resetButtonEl = resetButton;
 const xrButtonSlotEl = xrButtonSlot;
+const themeToggleEl = themeToggle;
 
 const modelSources = getModelSources();
 
@@ -77,6 +123,26 @@ let activeViewer: SpatialViewer | null = null;
 let activeModelId: string | null = null;
 let lastGoodModelId: string | null = null;
 let loadSequence = 0;
+let currentTheme: ViewerTheme = getInitialTheme();
+
+function applyTheme(theme: ViewerTheme): void {
+  currentTheme = theme;
+  document.body.dataset.theme = theme;
+  themeToggleEl.innerHTML = getThemeIcon(theme);
+  themeToggleEl.setAttribute("aria-pressed", String(theme === "dark"));
+  themeToggleEl.setAttribute(
+    "aria-label",
+    theme === "dark" ? "Switch to light mode" : "Enable dark mode",
+  );
+  themeToggleEl.title = theme === "dark" ? "Switch to light mode" : "Enable dark mode";
+  activeViewer?.setTheme(theme);
+
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Ignore storage access failures for ephemeral sessions.
+  }
+}
 
 function setHudError(message: string | null): void {
   hudErrorEl.hidden = message === null;
@@ -206,6 +272,7 @@ async function showModel(modelId: string): Promise<void> {
         resetButton: resetButtonEl,
         xrButtonMountEl: xrButtonSlotEl,
         data: result.model,
+        theme: currentTheme,
         ...viewerModelState,
         onPreviousModelRequest: () => {
           requestRelativeModel(-1);
@@ -227,6 +294,7 @@ async function showModel(modelId: string): Promise<void> {
 }
 
 populateModelOptions();
+applyTheme(currentTheme);
 
 if (modelSources.length === 0) {
   modelSelectEl.disabled = true;
@@ -254,6 +322,10 @@ backButtonEl.addEventListener("click", () => {
 
 resetButtonEl.addEventListener("click", () => {
   activeViewer?.reset();
+});
+
+themeToggleEl.addEventListener("click", () => {
+  applyTheme(currentTheme === "dark" ? "light" : "dark");
 });
 
 window.addEventListener("beforeunload", () => {
