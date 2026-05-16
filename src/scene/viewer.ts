@@ -103,6 +103,7 @@ const XR_DIAGRAM_SCALE = 0.13;
 const XR_TABLE_DISTANCE = 2.25;
 const XR_TABLE_VERTICAL_OFFSET = -0.5;
 const XR_MODEL_VERTICAL_LIFT = 0.25;
+const XR_MODEL_LOCAL_OFFSET = new THREE.Vector3(0, XR_MODEL_VERTICAL_LIFT, 0.82);
 const XR_PANEL_LOCAL_OFFSET = new THREE.Vector3(0, -0.92, 0.58);
 const XR_PANEL_TILT = new THREE.Quaternion().setFromAxisAngle(
   new THREE.Vector3(1, 0, 0),
@@ -871,7 +872,7 @@ export class SpatialViewer {
 
     this.presentationRoot.position
       .copy(this.xrAnchorWorldPosition)
-      .addScaledVector(WORLD_UP, XR_MODEL_VERTICAL_LIFT)
+      .add(XR_MODEL_LOCAL_OFFSET.clone().applyQuaternion(this.xrAnchorRotation))
       .sub(focusOffset);
   }
 
