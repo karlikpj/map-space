@@ -130,6 +130,7 @@ select {
   display: flex;
   gap: 0.6rem;
   margin-top: 1rem;
+  flex-wrap: wrap;
 }
 
 .hud-button {
@@ -156,6 +157,19 @@ select {
   cursor: default;
   opacity: 0.4;
   box-shadow: none;
+}
+
+.xr-button-slot {
+  display: flex;
+  margin-top: 0.8rem;
+}
+
+.xr-button-slot:empty {
+  display: none;
+}
+
+.xr-button-slot > * {
+  width: 100%;
 }
 
 .selection-details {
