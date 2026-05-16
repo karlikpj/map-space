@@ -43,6 +43,8 @@ Mermaid source files now live in `src/models/`.
 
 ## VR Mode
 
+<img src=splash.gif width=640>
+
 This project includes an optional WebXR VR mode alongside the normal desktop view.
 
 - On supported browsers and devices, an `Enter VR` button appears in the HUD.
@@ -51,13 +53,6 @@ This project includes an optional WebXR VR mode alongside the normal desktop vie
 - Nodes can be selected with controller laser pointers.
 - In VR, Back and Reset move to a floating in-world panel instead of the normal desktop HUD.
 - The desktop experience still works the same outside immersive mode.
-
-### VR Testing Notes
-
-- WebXR requires a secure context, so headset testing should use HTTPS.
-- GitHub Pages is a good fit for this project because it provides HTTPS and matches the current deploy setup.
-- Local `npm run dev` is still useful for desktop iteration, but Quest testing should use a hosted build.
-- If no VR button appears, the browser/device likely does not support `immersive-vr`, or the page is not being served from a secure origin.
 
 ## Scripts
 
@@ -85,17 +80,7 @@ This project includes an optional WebXR VR mode alongside the normal desktop vie
 - [src/scene/xrPanel.ts](/Users/karlikpj/Sites/map-space/src/scene/xrPanel.ts:1): floating VR panel textures, text, and action buttons
 - [src/main.ts](/Users/karlikpj/Sites/map-space/src/main.ts:1): app entrypoint and UI shell wiring
 
-## Deployment
-
-This project is configured to deploy to GitHub Pages from the workflow in [.github/workflows/deploy.yml](/Users/karlikpj/Sites/map-space/.github/workflows/deploy.yml:1).
-
-To publish successfully:
-
-1. Push to `main`, or trigger the workflow manually from the Actions tab.
-2. In GitHub repo settings, set `Pages -> Source` to `GitHub Actions`.
-3. Make sure the repo name matches the Vite `base` path in [vite.config.ts](/Users/karlikpj/Sites/map-space/vite.config.ts:1).
 
 ## Notes
 
-- The spatial viewer still consumes a tree, so Mermaid class graphs are converted into a deterministic tree shape for display.
 - This is intentionally a Mermaid class-diagram viewer, not a full viewer for every Mermaid diagram type yet.

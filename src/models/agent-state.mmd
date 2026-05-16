@@ -1,4 +1,6 @@
 classDiagram
+    direction LR
+
     class AgentState {
         +pubmed_article: PubMedArticleModel
         +determination: DeterminationType?
@@ -9,9 +11,235 @@ classDiagram
         +error: string?
     }
 
-    class PubMedArticleModel
-    class StudyDesignModel
+    class PubMedArticleModel {
+        +pubmed_type: str = article
+        +pmid: str
+        +url: str
+        +nlm_journal_unique_id: str?
+        +title: str
+        +abstract: str?
+        +authors: list[str]
+        +author_list: list[str]
+        +authors_str: str
+        +author1_last_fm: str?
+        +author1_lastfm: str?
+        +journal: str
+        +year: str?
+        +volume: str?
+        +issue: str?
+        +volume_issue: str?
+        +pages: str?
+        +first_page: str?
+        +last_page: str?
+        +doi: str?
+        +pii: str?
+        +pmc: str?
+        +issn: str?
+        +keywords: list[str]
+        +mesh: dict[str, Any]
+        +chemicals: dict[str, Any]
+        +publication_types: dict[str, str]
+        +grants: list[Any]
+        +history: dict[str, str]
+        +book_accession_id: str?
+        +book_title: str?
+        +book_publisher: str?
+        +book_language: str?
+        +book_editors: str?
+        +book_abstracts: str?
+        +book_sections: str?
+        +book_copyright: str?
+        +book_medium: str?
+        +book_synonyms: str?
+        +book_publication_status: str?
+        +book_history: str?
+        +book_contribution_date: str?
+        +book_date_revised: str?
+        +xml: bytes?
+        +root: str?
+        +content: Any?
+        +convert_history_dates(v) dict[str, str]
+        +convert_author_objects(v) list[str]
+        +to_citation() str
+    }
+
+    class StudyDesignModel {
+        +study_design: StudyDesign
+        +pico_elements: PicoElements
+        +extraction_confidence: ExtractionConfidence
+    }
+
+    class StudyDesign {
+      +design_type
+      +multicenter
+      +prospective
+    }
+
+    class DesignType {
+      <<Enumeration>>
+      RCT_double_blind
+      RCT_single_blind
+      RCT_open_label
+      meta_analysis
+      nonrandomized_controlled
+      cohort_prospective
+      cohort_retrospective
+      case_control
+      case_series
+      cross_sectional
+      systematic_review
+      observational_other
+      noninferiority_trial
+      modeling_study
+      unknown
+    }
+
+    class Multicenter {
+      <<Enumeration>>
+      yes
+      no
+      not_applicable
+      unknown
+    }
+
+    class Prospective {
+      <<Enumeration>>
+      yes
+      no
+      not_applicable
+      unknown
+    }
+
+    class TrialPhase {
+      +unknown
+      +not_applicable
+    }
+
+    class TrialPhasesList {
+      <<Enumeration>>
+      early_phase_1
+      phase_1
+      phase_2
+      phase_3
+      phase_4
+    }
+
+    class PicoElements
+
+    class Population {
+      +cancer_type
+      +cancer_stage
+    }
+
+    class AgeGroup {
+      <<Enumeration>>
+      pediatric
+      adult
+      both
+      unknown
+    }
+
+    class SampleSize {
+      +unknown
+      +not_applicable
+    }
+
+    class SampleSizeValue {
+      +value
+    }
+
+    class Intervention {
+      +primary_intervention
+    }
+
+    class InterventionType {
+      <<Enumeration>>
+      chemotherapy
+      targeted_therapy
+      immunotherapy
+      radiation
+      surgery
+      combination
+      supportive_care
+      diagnostic
+      other
+      unknown
+    }
+
+    class Outcomes {
+      +study_conclusions
+      +conclusions_category
+    }
+
+    class PrimaryEndpointsChoice {
+      +unknown
+      +not_applicable
+    }
+
+    class PrimaryEndpointsList
+
+    class PrimaryEndpoint {
+      +primary_endpoint_text
+      +primary_endpoint_results
+      +statistical_significance_assessment_reason
+    }
+
+    class PrimaryEndpointCategory {
+      <<Enumeration>>
+      overall_survival
+      cause_specific_mortality
+      total_mortality
+      quality_of_life
+      event_free_survival
+      relapse_free_survival
+      disease_free_survival
+      progression_free_survival
+      tumor_response
+      biomarker
+      safety
+      expert_opinion
+    }
+
+    class StatisticalSignificanceAssessment {
+      <<Enumeration>>
+      not_statistically_significant
+      statistically_significant_with_a_narrow_confidence_interval
+      statistically_significant_with_a_wide_confidence_interval
+      statistically_significant_with_unknown_confidence_interval
+      not_determined_based_on_info_provided
+    }
+
+    class SecondaryEndpointsChoice {
+      +unknown
+    }
+
+    class SecondaryEndpointsList {
+      +values
+    }
+
+    class ConclusionsCategory {
+      <<Enumeration>>
+      not_determinable
+      no_meaningful_findings_more_research_needed
+      solid_findings_more_research_needed
+      actionable_findings_system_changes_needed
+      clear_findings_ready_for_implementation
+    }
+
+    class ExtractionConfidence {
+      +missing_critical_elements
+      +extraction_notes
+    }
+
+    class OverallConfidence {
+      <<Enumeration>>
+      high
+      moderate
+      low
+    }
+
     class TotalEvidenceScore
+
     class DeterminationType {
         <<enumeration>>
         in_scope
@@ -34,3 +262,36 @@ classDiagram
     AgentState --> DeterminationReason : determination_reason
     AgentState --> StudyDesignModel : study_design
     AgentState --> TotalEvidenceScore : initial_evidence_score
+
+    StudyDesignModel *-- StudyDesign : study_design
+    StudyDesignModel *-- PicoElements : pico_elements
+    StudyDesignModel *-- ExtractionConfidence : extraction_confidence
+
+    StudyDesign *-- DesignType
+    StudyDesign *-- Multicenter
+    StudyDesign *-- Prospective
+    StudyDesign *-- TrialPhase
+    TrialPhase *-- TrialPhasesList
+
+    PicoElements *-- Population
+    PicoElements *-- Intervention
+    PicoElements *-- Outcomes
+
+    Population *-- AgeGroup
+    Population *-- SampleSize
+    SampleSize *-- SampleSizeValue
+
+    Intervention *-- InterventionType
+
+    Outcomes *-- PrimaryEndpointsChoice
+    Outcomes *-- SecondaryEndpointsChoice
+    Outcomes *-- ConclusionsCategory
+
+    PrimaryEndpointsChoice *-- PrimaryEndpointsList
+    PrimaryEndpointsList *-- PrimaryEndpoint
+    PrimaryEndpoint *-- PrimaryEndpointCategory
+    PrimaryEndpoint *-- StatisticalSignificanceAssessment
+
+    SecondaryEndpointsChoice *-- SecondaryEndpointsList
+
+    ExtractionConfidence *-- OverallConfidence
