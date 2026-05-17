@@ -120,7 +120,7 @@ function createPanelMaterial(texture: THREE.CanvasTexture): THREE.MeshBasicMater
 
 function createShadowMaterial(): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({
-    color: "#fff7ec",
+    color: "#f1f8fd",
     transparent: true,
     opacity: 0.74,
     roughness: 0.94,
@@ -136,14 +136,14 @@ function drawPanelTexture(texture: THREE.CanvasTexture, state: VrPanelState): vo
   }
 
   const isDarkTheme = state.isDarkTheme;
-  const backgroundFill = isDarkTheme ? "rgba(8, 15, 21, 0.96)" : "rgba(255, 251, 243, 0.95)";
-  const headerColor = isDarkTheme ? "#f0b56e" : "#8b5e2d";
-  const dividerColor = isDarkTheme ? "#f0b56e" : "#2f5c64";
-  const mutedLabelColor = isDarkTheme ? "#92acb7" : "#7b8f96";
-  const bodyColor = isDarkTheme ? "#edf6fb" : "#15343f";
-  const sectionColor = isDarkTheme ? "#d4e6ed" : "#2f5c64";
-  const supportingColor = isDarkTheme ? "#a9c1ca" : "#45616b";
-  const detailColor = isDarkTheme ? "#c3d9e0" : "#3a5660";
+  const backgroundFill = isDarkTheme ? "rgba(8, 15, 21, 0.96)" : "rgba(246, 251, 255, 0.95)";
+  const headerColor = isDarkTheme ? "#f0b56e" : "#6389a3";
+  const dividerColor = isDarkTheme ? "#f0b56e" : "#5a839b";
+  const mutedLabelColor = isDarkTheme ? "#92acb7" : "#7a919d";
+  const bodyColor = isDarkTheme ? "#edf6fb" : "#193d4f";
+  const sectionColor = isDarkTheme ? "#d4e6ed" : "#54788f";
+  const supportingColor = isDarkTheme ? "#a9c1ca" : "#55707d";
+  const detailColor = isDarkTheme ? "#c3d9e0" : "#4f6b79";
 
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = backgroundFill;
@@ -230,9 +230,9 @@ function drawButtonTexture(
   if (disabled) {
     context.fillStyle = isDarkTheme ? "rgba(225, 237, 242, 0.12)" : "rgba(35, 63, 72, 0.22)";
   } else if (hovered) {
-    context.fillStyle = isDarkTheme ? "#f0b56e" : "#b05f1b";
+    context.fillStyle = isDarkTheme ? "#f0b56e" : "#7ca5bc";
   } else {
-    context.fillStyle = isDarkTheme ? "#18303b" : "#1d4550";
+    context.fillStyle = isDarkTheme ? "#18303b" : "#557b92";
   }
 
   drawRoundedRect(context, 12, 12, canvas.width - 24, canvas.height - 24, 34);
