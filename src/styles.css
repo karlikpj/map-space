@@ -1,11 +1,11 @@
 :root {
   color-scheme: light;
   font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
-  color: #17303a;
+  color: #183847;
   background:
-    radial-gradient(circle at top left, rgba(255, 226, 176, 0.95), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(154, 204, 190, 0.75), transparent 28%),
-    linear-gradient(160deg, #f7f4ea 0%, #edf3ef 48%, #dde9e4 100%);
+    radial-gradient(circle at top left, rgba(204, 228, 255, 0.9), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(183, 216, 235, 0.76), transparent 30%),
+    linear-gradient(160deg, #f4f9fd 0%, #e7f1f8 48%, #d9e8f2 100%);
 }
 
 * {
@@ -64,12 +64,12 @@ select {
   z-index: 10;
   width: min(29rem, calc(100% - 2.5rem));
   padding: 1.15rem 1.2rem;
-  border: 1px solid rgba(23, 48, 58, 0.09);
+  border: 1px solid rgba(28, 58, 74, 0.09);
   border-radius: 1.3rem;
-  background: rgba(255, 251, 243, 0.76);
+  background: rgba(246, 251, 255, 0.76);
   backdrop-filter: blur(18px);
   box-shadow:
-    0 22px 60px rgba(22, 43, 52, 0.14),
+    0 22px 60px rgba(22, 46, 59, 0.12),
     inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -90,7 +90,7 @@ select {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: #8b5e2d;
+  color: #658aa3;
 }
 
 .hud h1 {
@@ -110,8 +110,8 @@ select {
   border: 0;
   border-radius: 999px;
   padding: 0;
-  background: rgba(22, 56, 71, 0.08);
-  color: #20424d;
+  background: rgba(33, 73, 96, 0.08);
+  color: #335d74;
   cursor: pointer;
   transition:
     transform 180ms ease,
@@ -122,7 +122,7 @@ select {
 
 .theme-toggle:hover {
   transform: translateY(-1px);
-  background: rgba(22, 56, 71, 0.14);
+  background: rgba(33, 73, 96, 0.14);
 }
 
 .theme-toggle svg {
@@ -138,14 +138,15 @@ select {
 .hud-copy {
   margin: 0.8rem 0 0;
   max-width: 34ch;
-  color: #48616b;
+  font-size: 0.97rem;
+  color: #54707f;
   line-height: 1.5;
 }
 
 .hud-copy code {
   font-family: "SFMono-Regular", "Menlo", "Monaco", monospace;
   font-size: 0.94em;
-  color: #173847;
+  color: #2f617d;
 }
 
 .model-picker {
@@ -156,21 +157,21 @@ select {
 }
 
 .model-label {
-  font-size: 0.73rem;
+  font-size: 0.71rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #6a7d84;
+  color: #708894;
 }
 
 .model-select {
   appearance: none;
   width: 100%;
-  border: 1px solid rgba(23, 48, 58, 0.14);
+  border: 1px solid rgba(28, 58, 74, 0.14);
   border-radius: 0.95rem;
   padding: 0.74rem 0.9rem;
-  background: rgba(255, 255, 255, 0.72);
-  color: #17303a;
+  background: rgba(251, 254, 255, 0.76);
+  color: #183847;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
@@ -204,9 +205,9 @@ select {
   border: 0;
   border-radius: 999px;
   padding: 0.5rem 0.75rem;
-  background: rgba(24, 64, 80, 0.08);
-  color: #20424d;
-  font-size: 0.82rem;
+  background: rgba(36, 76, 99, 0.08);
+  color: #335d74;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -217,11 +218,11 @@ select {
 
 .breadcrumb:hover {
   transform: translateY(-1px);
-  background: rgba(24, 64, 80, 0.14);
+  background: rgba(36, 76, 99, 0.14);
 }
 
 .breadcrumb.is-active {
-  background: #163847;
+  background: #5d8aa5;
   color: #f7fbfb;
 }
 
@@ -237,7 +238,7 @@ select {
   border: 0;
   border-radius: 0.95rem;
   padding: 0.72rem 1rem;
-  background: linear-gradient(135deg, #173847, #2f5c64);
+  background: linear-gradient(135deg, #5f87a1, #7ca5bc);
   color: #f7fbfb;
   font-weight: 700;
   cursor: pointer;
@@ -245,7 +246,7 @@ select {
     transform 180ms ease,
     opacity 180ms ease,
     box-shadow 180ms ease;
-  box-shadow: 0 10px 26px rgba(23, 56, 71, 0.22);
+  box-shadow: 0 10px 26px rgba(61, 102, 126, 0.24);
 }
 
 .hud-button:hover:not(:disabled) {
@@ -274,29 +275,30 @@ select {
 .selection-details {
   margin-top: 0.95rem;
   padding-top: 0.95rem;
-  border-top: 1px solid rgba(23, 48, 58, 0.1);
+  border-top: 1px solid rgba(28, 58, 74, 0.1);
 }
 
 .selection-label {
   margin: 0;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #7d8e95;
+  color: #7d95a2;
 }
 
 .selection-title {
   margin: 0.28rem 0 0;
   font-size: 1.05rem;
   font-weight: 700;
-  color: #17303a;
+  color: #183847;
 }
 
 .selection-subtitle {
   margin: 0.28rem 0 0;
+  font-size: 0.97rem;
   line-height: 1.45;
-  color: #48616b;
+  color: #54707f;
 }
 
 body[data-theme="dark"] {

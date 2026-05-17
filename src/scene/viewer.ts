@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { EXRLoader } from "three/examples/jsm/loaders/EXRLoader.js";
 import { VRButton } from "three/addons/webxr/VRButton.js";
 import type { DiagramNode } from "../data/diagram";
 import { dampNumber, dampVector3 } from "./animation";
@@ -119,6 +120,13 @@ const XR_PANEL_TILT = new THREE.Quaternion().setFromAxisAngle(
 const XR_RAY_LENGTH = 6;
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 const FORWARD_AXIS = new THREE.Vector3(0, 0, 1);
+const LIGHT_BACKGROUND_COLOR = "#e4f0f7";
+const DARK_BACKGROUND_COLOR = "#081017";
+const XR_DARK_BACKGROUND_COLOR = "#03070c";
+const SKYBOX_URLS: Record<ViewerTheme, string> = {
+  light: "/img/light-theme.exr",
+  dark: "/img/dark-theme.exr",
+};
 
 export class SpatialViewer {
   private readonly container: HTMLDivElement;
@@ -137,9 +145,11 @@ export class SpatialViewer {
     antialias: true,
     alpha: true,
   });
-  private readonly hemisphereLight = new THREE.HemisphereLight("#fff9f0", "#b7c7c2", 1.6);
-  private readonly keyLight = new THREE.DirectionalLight("#fff4d6", 1.15);
-  private readonly fillLight = new THREE.DirectionalLight("#d9eef2", 0.9);
+  private readonly backgroundLoader = new EXRLoader();
+  private readonly backgroundTextures: Partial<Record<ViewerTheme, THREE.Texture>> = {};
+  private readonly hemisphereLight = new THREE.HemisphereLight("#eef8ff", "#bfd2db", 1.58);
+  private readonly keyLight = new THREE.DirectionalLight("#dbeaff", 1.08);
+  private readonly fillLight = new THREE.DirectionalLight("#d9eef8", 0.92);
   private readonly overheadDarkLight = new THREE.SpotLight(
     "#d7e4ff",
     0,
@@ -175,7 +185,7 @@ export class SpatialViewer {
   private readonly xrPanelWorldPosition = new THREE.Vector3();
   private readonly sceneFog = new THREE.Fog("#e9f0eb", 12, 28);
   private readonly floorMaterial = new THREE.MeshStandardMaterial({
-    color: "#dbe7e1",
+    color: "#d8e6ef",
     transparent: true,
     opacity: 0.72,
     roughness: 1,
@@ -196,6 +206,7 @@ export class SpatialViewer {
   private xrHoveredAction: VrPanelAction | null = null;
   private isXRPresenting = false;
   private xrAnchorInitialized = false;
+  private xrButtonEl: HTMLElement | null = null;
   private modelLabel: string;
   private canGoToPreviousModel: boolean;
   private canGoToNextModel: boolean;
@@ -226,7 +237,7 @@ export class SpatialViewer {
     this.renderer.xr.setReferenceSpaceType("local-floor");
     this.container.append(this.renderer.domElement);
 
-    this.scene.background = new THREE.Color("#e9f0eb");
+    this.scene.background = new THREE.Color(LIGHT_BACKGROUND_COLOR);
     this.scene.fog = this.sceneFog;
     this.scene.add(this.presentationRoot);
     this.presentationRoot.add(this.sceneRoot);
@@ -244,6 +255,7 @@ export class SpatialViewer {
     this.controls.target.copy(this.baseFocusPosition);
 
     this.setupScene();
+    this.preloadBackgroundTextures();
     this.setupXRControllers();
     this.setupXRButton();
     this.applyTheme();
@@ -373,6 +385,9 @@ export class SpatialViewer {
 
     this.floor.geometry.dispose();
     this.floorMaterial.dispose();
+    Object.values(this.backgroundTextures).forEach((texture) => {
+      texture.dispose();
+    });
 
     this.renderer.dispose();
     this.container.replaceChildren();
@@ -405,7 +420,6 @@ export class SpatialViewer {
         border: "0",
         padding: "0.72rem 1rem",
         borderRadius: "0.95rem",
-        background: "linear-gradient(135deg, #8b5e2d, #b05f1b)",
         color: "#fffaf4",
         fontFamily: '"Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif',
         fontSize: "0.95rem",
@@ -414,10 +428,76 @@ export class SpatialViewer {
         opacity: "1",
       });
 
+      this.xrButtonEl = button;
+      this.updateXrButtonTheme();
       this.xrButtonMountEl.replaceChildren(button);
     } catch {
+      this.xrButtonEl = null;
       this.xrButtonMountEl.replaceChildren();
     }
+  }
+
+  private preloadBackgroundTextures(): void {
+    const backgroundEntries: [ViewerTheme, string][] = [
+      ["light", SKYBOX_URLS.light],
+      ["dark", SKYBOX_URLS.dark],
+    ];
+
+    backgroundEntries.forEach(([theme, url]) => {
+      void this.loadBackgroundTexture(theme, url);
+    });
+  }
+
+  private async loadBackgroundTexture(theme: ViewerTheme, url: string): Promise<void> {
+    try {
+      const texture = await this.backgroundLoader.loadAsync(url);
+      texture.mapping = THREE.EquirectangularReflectionMapping;
+      texture.needsUpdate = true;
+
+      if (this.disposed) {
+        texture.dispose();
+        return;
+      }
+
+      const existingTexture = this.backgroundTextures[theme];
+      if (existingTexture) {
+        existingTexture.dispose();
+      }
+
+      this.backgroundTextures[theme] = texture;
+      this.applyTheme();
+    } catch (error) {
+      console.warn(`Failed to load ${theme} EXR skybox from ${url}.`, error);
+    }
+  }
+
+  private getBackgroundTexture(): THREE.Texture | null {
+    const backgroundTheme: ViewerTheme = this.theme === "dark" ? "dark" : "light";
+    return this.backgroundTextures[backgroundTheme] ?? null;
+  }
+
+  private getFallbackBackgroundColor(): string {
+    if (this.theme !== "dark") {
+      return LIGHT_BACKGROUND_COLOR;
+    }
+
+    return this.isXRPresenting ? XR_DARK_BACKGROUND_COLOR : DARK_BACKGROUND_COLOR;
+  }
+
+  private updateXrButtonTheme(): void {
+    if (!this.xrButtonEl) {
+      return;
+    }
+
+    const isDark = this.theme === "dark";
+    Object.assign(this.xrButtonEl.style, {
+      background: isDark
+        ? "linear-gradient(135deg, #1d3947, #2e5963)"
+        : "linear-gradient(135deg, #5f87a1, #7ca5bc)",
+      boxShadow: isDark
+        ? "0 10px 26px rgba(0, 0, 0, 0.34)"
+        : "0 10px 26px rgba(61, 102, 126, 0.24)",
+    });
   }
 
   private setupXRControllers(): void {
@@ -570,7 +650,7 @@ export class SpatialViewer {
     geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
 
     const material = new THREE.LineBasicMaterial({
-      color: "#6f8890",
+      color: "#7a95a7",
       transparent: true,
       opacity: 0,
     });
@@ -602,24 +682,25 @@ export class SpatialViewer {
   private applyTheme(): void {
     const isDark = this.theme === "dark";
     const isVrDark = isDark && this.isXRPresenting;
+    const backgroundTexture = this.getBackgroundTexture();
 
-    this.scene.background = new THREE.Color(isVrDark ? "#03070c" : isDark ? "#081017" : "#e9f0eb");
-    this.sceneFog.color.set(isVrDark ? "#03070c" : isDark ? "#081017" : "#e9f0eb");
+    this.scene.background = backgroundTexture ?? new THREE.Color(this.getFallbackBackgroundColor());
+    this.sceneFog.color.set(isVrDark ? XR_DARK_BACKGROUND_COLOR : isDark ? DARK_BACKGROUND_COLOR : LIGHT_BACKGROUND_COLOR);
     this.sceneFog.near = isVrDark ? 7.5 : isDark ? 9 : 12;
     this.sceneFog.far = isVrDark ? 18 : isDark ? 24 : 28;
 
-    this.hemisphereLight.color.set(isDark ? "#8a9dbb" : "#fff9f0");
-    this.hemisphereLight.groundColor.set(isDark ? "#05090d" : "#b7c7c2");
-    this.hemisphereLight.intensity = isVrDark ? 0.08 : isDark ? 0.22 : 1.6;
+    this.hemisphereLight.color.set(isDark ? "#8a9dbb" : "#eef8ff");
+    this.hemisphereLight.groundColor.set(isDark ? "#05090d" : "#bfd2db");
+    this.hemisphereLight.intensity = isVrDark ? 0.08 : isDark ? 0.22 : 1.58;
 
-    this.keyLight.color.set(isDark ? "#6a7b90" : "#fff4d6");
-    this.keyLight.intensity = isVrDark ? 0.1 : isDark ? 0.3 : 1.15;
+    this.keyLight.color.set(isDark ? "#6a7b90" : "#dbeaff");
+    this.keyLight.intensity = isVrDark ? 0.1 : isDark ? 0.3 : 1.08;
 
-    this.fillLight.color.set(isDark ? "#4b6070" : "#d9eef2");
-    this.fillLight.intensity = isVrDark ? 0.05 : isDark ? 0.18 : 0.9;
+    this.fillLight.color.set(isDark ? "#4b6070" : "#d9eef8");
+    this.fillLight.intensity = isVrDark ? 0.05 : isDark ? 0.18 : 0.92;
 
-    this.floorMaterial.color.set(isVrDark ? "#091018" : isDark ? "#111b24" : "#dbe7e1");
-    this.floorMaterial.opacity = isVrDark ? 0.9 : isDark ? 0.82 : 0.72;
+    this.floorMaterial.color.set(isVrDark ? "#091018" : isDark ? "#111b24" : "#d8e6ef");
+    this.floorMaterial.opacity = isVrDark ? 0.9 : isDark ? 0.82 : 0.76;
 
     this.overheadDarkLight.visible = isDark;
     this.overheadDarkLight.intensity = isVrDark ? 1.08 : isDark ? 1.22 : 0;
@@ -633,9 +714,10 @@ export class SpatialViewer {
     this.desktopFlashlight.intensity = isDark && !this.isXRPresenting ? 0.95 : 0;
 
     this.vrPanel.shadowMesh.visible = isDark;
-    this.vrPanel.shadowMaterial.color.set(isVrDark ? "#071017" : isDark ? "#101a23" : "#fff7ec");
+    this.vrPanel.shadowMaterial.color.set(isVrDark ? "#071017" : isDark ? "#101a23" : "#f1f8fd");
     this.vrPanel.shadowMaterial.opacity = isVrDark ? 0.82 : isDark ? 0.64 : 0.74;
 
+    this.updateXrButtonTheme();
     this.updateControllerFlashlights();
   }
 
